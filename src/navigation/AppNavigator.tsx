@@ -1,10 +1,12 @@
 // CrimeSphere AI — AppNavigator
+
 import React from 'react';
+import { Platform } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import { createStackNavigator } from '@react-navigation/stack';
 import { createDrawerNavigator } from '@react-navigation/drawer';
+
 import { useAuthStore } from '../store/authStore';
-import { Colors } from '../constants/colors';
 
 // Screens
 import { LoginScreen } from '../screens/auth/LoginScreen';
@@ -13,66 +15,118 @@ import { ControlRoomScreen } from '../screens/dashboard/ControlRoomScreen';
 import { CaseFilesScreen } from '../screens/cases/CaseFilesScreen';
 import { CaseDetailScreen } from '../screens/cases/CaseDetailScreen';
 import { EvidenceViewerScreen } from '../screens/cases/EvidenceViewerScreen';
+
+// Drawer
 import { SideDrawer } from '../components/layout/SideDrawer';
 
-// Navigation parameter lists
-import type { AuthStackParamList, DrawerParamList, CaseStackParamList } from '../types/navigation';
+// Types
+import type {
+  DrawerParamList,
+  CaseStackParamList,
+} from '../types/navigation';
 
-const Stack = createStackNavigator();
+const RootStack = createStackNavigator();
 const Drawer = createDrawerNavigator<DrawerParamList>();
 const CaseStack = createStackNavigator<CaseStackParamList>();
 
-// Nested Case Stack to allow Case Files -> Case Detail -> Evidence
-const CaseStackNavigator = () => {
+function CaseStackNavigator() {
   return (
-    <CaseStack.Navigator screenOptions={{ headerShown: false }}>
-      <CaseStack.Screen name="CaseFiles" component={CaseFilesScreen} />
-      <CaseStack.Screen name="CaseDetail" component={CaseDetailScreen} />
-      <CaseStack.Screen name="EvidenceViewer" component={EvidenceViewerScreen} />
+    <CaseStack.Navigator
+      screenOptions={{
+        headerShown: false,
+      }}
+    >
+      <CaseStack.Screen
+        name="CaseFiles"
+        component={CaseFilesScreen}
+      />
+
+      <CaseStack.Screen
+        name="CaseDetail"
+        component={CaseDetailScreen}
+      />
+
+      <CaseStack.Screen
+        name="EvidenceViewer"
+        component={EvidenceViewerScreen}
+      />
     </CaseStack.Navigator>
   );
-};
+}
 
-// Authenticated flow Drawer
-const DrawerNavigator = () => {
+function DrawerNavigator() {
   return (
     <Drawer.Navigator
       drawerContent={(props) => <SideDrawer {...props} />}
       screenOptions={{
         headerShown: false,
+
+        drawerType: Platform.OS === 'web' ? 'permanent' : 'front',
+
+        swipeEnabled: Platform.OS !== 'web',
+
+        overlayColor: 'transparent',
+
         drawerStyle: {
           width: 230,
         },
       }}
     >
-      <Drawer.Screen name="ControlRoom" component={ControlRoomScreen} />
-      <Drawer.Screen name="CaseFiles" component={CaseStackNavigator} />
+      <Drawer.Screen
+        name="ControlRoom"
+        component={ControlRoomScreen}
+      />
+
+      <Drawer.Screen
+        name="CaseFiles"
+        component={CaseStackNavigator}
+      />
     </Drawer.Navigator>
   );
-};
+}
 
-// Auth stack
-const AuthNavigator = () => {
+function AuthNavigator() {
   return (
-    <Stack.Navigator screenOptions={{ headerShown: false }}>
-      <Stack.Screen name="Login" component={LoginScreen} />
-      <Stack.Screen name="ForgotPassword" component={ForgotPasswordScreen} />
-    </Stack.Navigator>
+    <RootStack.Navigator
+      screenOptions={{
+        headerShown: false,
+      }}
+    >
+      <RootStack.Screen
+        name="Login"
+        component={LoginScreen}
+      />
+
+      <RootStack.Screen
+        name="ForgotPassword"
+        component={ForgotPasswordScreen}
+      />
+    </RootStack.Navigator>
   );
-};
+}
 
 export const AppNavigator = () => {
   const { isAuthenticated } = useAuthStore();
 
   return (
     <NavigationContainer>
-      <Stack.Navigator screenOptions={{ headerShown: false }}>
+      <RootStack.Navigator
+        screenOptions={{
+          headerShown: false,
+        }}
+      >
         {isAuthenticated ? (
-          <Stack.Screen name="App" component={DrawerNavigator} />
+          <RootStack.Screen
+            name="App"
+            component={DrawerNavigator}
+          />
         ) : (
-          <Stack.Screen name="Auth" component={AuthNavigator} />
+          <RootStack.Screen
+            name="Auth"
+            component={AuthNavigator}
+          />
         )}
-      </Stack.Navigator>
+      </RootStack.Navigator>
     </NavigationContainer>
   );
 };
