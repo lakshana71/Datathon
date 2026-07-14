@@ -16,7 +16,7 @@ export type DrawerParamList = {
   CaseFiles: undefined;
   CaseDetail: { caseId: string };
   EvidenceViewer: { caseId: string; evidenceId: string };
-  PersonCrimeTracker: undefined;
+  PersonCrimeTracker: { query?: string } | undefined;
   DutyNotebook: undefined;
   CrimeMap: undefined;
   Alerts: undefined;

@@ -516,16 +516,34 @@ export const CaseDetailScreen: React.FC<Props> = ({ navigation, route }) => {
 
     switch (node.id) {
       case 'suspects':
+        const suspectNames = ['John Doe', 'Mike Johnson', 'Jane Smith'];
         return (
           <View>
             <Text style={popupStyles.sectionHead}>EXTRACTED ENTITIES</Text>
             {caseItem.entities.length === 0
               ? <Text style={popupStyles.emptyText}>No entities recorded.</Text>
               : caseItem.entities.map((e, i) => (
-                  <View key={i} style={[popupStyles.chip, { borderColor: accent + '55', backgroundColor: accent + '12' }]}>
+                  <View key={i} style={[popupStyles.chip, { borderColor: accent + '55', backgroundColor: accent + '12', marginBottom: 6 }]}>
                     <Text style={[popupStyles.chipText, { color: accent }]}>{e}</Text>
                   </View>
                 ))}
+            <Text style={[popupStyles.sectionHead, { marginTop: 15 }]}>SUSPECTS PROFILE FILES</Text>
+            {suspectNames.map((name, i) => (
+              <Pressable
+                key={`sus-${i}`}
+                style={popupStyles.listRow}
+                onPress={() => {
+                  setOpenedNodes(new Map());
+                  navigation.navigate('PersonCrimeTracker' as any, { query: name });
+                }}
+              >
+                <View style={{ flex: 1 }}>
+                  <Text style={popupStyles.listTitle}>{name}</Text>
+                  <Text style={popupStyles.listSub}>Tap to view intelligence file</Text>
+                </View>
+                <Text style={[popupStyles.arrow, { color: accent }]}>›</Text>
+              </Pressable>
+            ))}
           </View>
         );
 
