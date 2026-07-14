@@ -32,7 +32,7 @@ const NAV_ITEMS: NavItem[] = [
   { id: 'ControlRoom', label: 'Control Room', screen: 'ControlRoom', icon: '⊞' },
   { id: 'investigation-label', label: 'Investigation', screen: '', icon: '', group: 'label' },
   { id: 'CaseFiles', label: 'Case Files', screen: 'CaseFiles', icon: '📁' },
-  { id: 'NetworkLinks', label: 'Network Links', screen: 'NetworkLinks', icon: '◎' },
+  { id: 'PersonCrimeTracker', label: 'Crime Tracker', screen: 'PersonCrimeTracker', icon: '◎' },
   { id: 'DutyNotebook', label: 'Duty Notebook', screen: 'DutyNotebook', icon: '💬' },
   { id: 'fieldops-label', label: 'Field Ops', screen: '', icon: '', group: 'label' },
   { id: 'CrimeMap', label: 'Crime Map', screen: 'CrimeMap', icon: '🗺' },

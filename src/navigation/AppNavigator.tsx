@@ -15,6 +15,8 @@ import { ControlRoomScreen } from '../screens/dashboard/ControlRoomScreen';
 import { CaseFilesScreen } from '../screens/cases/CaseFilesScreen';
 import { CaseDetailScreen } from '../screens/cases/CaseDetailScreen';
 import { EvidenceViewerScreen } from '../screens/cases/EvidenceViewerScreen';
+import { PersonCrimeTrackerScreen } from '../screens/tracker/PersonCrimeTrackerScreen';
+import { DigitalNotebookScreen } from '../screens/notebook/DigitalNotebookScreen';
 
 // Drawer
 import { SideDrawer } from '../components/layout/SideDrawer';
@@ -80,6 +82,16 @@ function DrawerNavigator() {
       <Drawer.Screen
         name="CaseFiles"
         component={CaseStackNavigator}
+      />
+
+      <Drawer.Screen
+        name="PersonCrimeTracker"
+        component={PersonCrimeTrackerScreen}
+      />
+
+      <Drawer.Screen
+        name="DutyNotebook"
+        component={DigitalNotebookScreen}
       />
     </Drawer.Navigator>
   );
