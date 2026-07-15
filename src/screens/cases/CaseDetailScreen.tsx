@@ -5,7 +5,7 @@ import React, { useRef, useEffect, useState, useCallback } from 'react';
 import {
   View, Text, StyleSheet, Pressable, Animated,
   ScrollView, LayoutChangeEvent, PanResponder,
-  Platform,
+  Platform, Modal, TouchableOpacity,
 } from 'react-native';
 import Svg, { Path, Circle, Defs, RadialGradient as SvgRadialGradient, Stop } from 'react-native-svg';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -53,43 +53,43 @@ const PRIORITY_LABELS: Record<Priority, string> = {
 };
 
 const CAT_COLOR: Record<Category, string> = {
-  people:   Colors.steel,
+  people: Colors.steel,
   evidence: Colors.amber,
-  intel:    Colors.inkNavy,
+  intel: Colors.inkNavy,
   location: Colors.red,
-  assets:   Colors.green,
+  assets: Colors.green,
 };
 
 const CAT_TINT: Record<Category, string> = {
-  people:   Colors.paperDim,
+  people: Colors.paperDim,
   evidence: Colors.amberDim,
-  intel:    Colors.paperDim,
+  intel: Colors.paperDim,
   location: Colors.redDim,
-  assets:   Colors.greenDim,
+  assets: Colors.greenDim,
 };
 
 const CAT_LABEL: Record<Category, string> = {
-  people:   'People',
+  people: 'People',
   evidence: 'Evidence',
-  intel:    'Intelligence',
+  intel: 'Intelligence',
   location: 'Location',
-  assets:   'Assets',
+  assets: 'Assets',
 };
 
 const ALL_NODE_IDS = [
-  'suspects','evidence','documents','linked','financial','witnesses',
-  'timeline','analysis','network','vehicles','calls','crimescene','officer','cctv',
+  'suspects', 'evidence', 'documents', 'linked', 'financial', 'witnesses',
+  'timeline', 'analysis', 'network', 'vehicles', 'calls', 'crimescene', 'officer', 'cctv',
 ];
 
-const RING_GAP   = 8;
-const TOP_PAD    = 108;
+const RING_GAP = 8;
+const TOP_PAD = 108;
 const BOTTOM_PAD = 96;
 
 // Popup defaults / constraints
 const POPUP_DEFAULT_W = 320;
 const POPUP_DEFAULT_H = 400;
-const POPUP_MIN_W     = 260;
-const POPUP_MIN_H     = 200;
+const POPUP_MIN_W = 260;
+const POPUP_MIN_H = 200;
 
 // ─── Draggable Resizable Popup ────────────────────────────────────────────────
 interface PopupProps {
@@ -114,7 +114,7 @@ const DraggablePopup: React.FC<PopupProps> = ({
     w: POPUP_DEFAULT_W,
     h: POPUP_DEFAULT_H,
   });
-  const dragStart   = useRef({ px: 0, py: 0, ox: 0, oy: 0 });
+  const dragStart = useRef({ px: 0, py: 0, ox: 0, oy: 0 });
   const resizeStart = useRef({ px: 0, py: 0, ow: 0, oh: 0 });
   const [, forceUpdate] = useState(0);
   const popupAnim = useRef(new Animated.Value(0)).current;
@@ -173,7 +173,7 @@ const DraggablePopup: React.FC<PopupProps> = ({
 
   const { x, y, w, h } = posRef.current;
 
-  const popupScale   = popupAnim.interpolate({ inputRange: [0, 1], outputRange: [0.88, 1] });
+  const popupScale = popupAnim.interpolate({ inputRange: [0, 1], outputRange: [0.88, 1] });
   const popupOpacity = popupAnim.interpolate({ inputRange: [0, 1], outputRange: [0, 1] });
 
   return (
@@ -257,11 +257,12 @@ export const CaseDetailScreen: React.FC<Props> = ({ navigation, route }) => {
   // Interaction state — Map of nodeId → NodeDef for multi-popup support
   const [openedNodes, setOpenedNodes] = useState<OpenedNodesMap>(new Map());
   const [hoveredNode, setHoveredNode] = useState<string | null>(null);
+  const [evidencesOpen, setEvidencesOpen] = useState(false);
 
   // ── Animation refs ──────────────────────────────────────────────────────────
-  const globalFade  = useRef(new Animated.Value(0)).current;
+  const globalFade = useRef(new Animated.Value(0)).current;
   const centerScale = useRef(new Animated.Value(0.72)).current;
-  const pulseAnim   = useRef(new Animated.Value(0)).current;
+  const pulseAnim = useRef(new Animated.Value(0)).current;
 
   const nodeEnter = useRef<Record<string, Animated.Value>>({});
   const nodePress = useRef<Record<string, Animated.Value>>({});
@@ -272,7 +273,7 @@ export const CaseDetailScreen: React.FC<Props> = ({ navigation, route }) => {
   });
 
   useEffect(() => {
-    Animated.timing(globalFade,  { toValue: 1, duration: 480, useNativeDriver: true }).start();
+    Animated.timing(globalFade, { toValue: 1, duration: 480, useNativeDriver: true }).start();
     Animated.spring(centerScale, { toValue: 1, friction: 6, tension: 80, useNativeDriver: true }).start();
     Animated.loop(
       Animated.sequence([
@@ -301,44 +302,44 @@ export const CaseDetailScreen: React.FC<Props> = ({ navigation, route }) => {
 
   // ── Node definitions ────────────────────────────────────────────────────────
   const nodeDefs: NodeDef[] = [
-    { id: 'suspects',   label: 'Suspects',      subLabel: `${Math.max(1, caseItem.entities.length)} Persons`,  icon: '👤', category: 'people',   angle: -90,  ring: 'inner' },
-    { id: 'evidence',   label: 'Evidence',       subLabel: `${caseItem.evidence.length} Items`,                 icon: '🗂',  category: 'evidence', angle: -30,  ring: 'inner' },
-    { id: 'documents',  label: 'Documents',      subLabel: `${caseItem.evidence.filter(e => e.type === 'document' || e.type === 'screenshot').length} Files`, icon: '📄', category: 'evidence', angle: 30,  ring: 'inner' },
-    { id: 'linked',     label: 'Linked Cases',   subLabel: `${caseItem.linkedCases.length} Cases`,             icon: '🔗', category: 'location', angle: 90,  ring: 'inner' },
-    { id: 'financial',  label: 'Financial Trail',subLabel: `${caseItem.entities.filter(e => e.startsWith('acct')).length || 0} Accounts`, icon: '💳', category: 'assets', angle: 150, ring: 'inner' },
-    { id: 'witnesses',  label: 'Witnesses',      subLabel: '2 Persons',                                        icon: '👥', category: 'people',   angle: 210, ring: 'inner' },
+    { id: 'suspects', label: 'Suspects', subLabel: `${Math.max(1, caseItem.entities.length)} Persons`, icon: '👤', category: 'people', angle: -90, ring: 'inner' },
+    { id: 'evidence', label: 'Evidence', subLabel: `${caseItem.evidence.length} Items`, icon: '🗂', category: 'evidence', angle: -30, ring: 'inner' },
+    { id: 'documents', label: 'Documents', subLabel: `${caseItem.evidence.filter(e => e.type === 'document' || e.type === 'screenshot').length} Files`, icon: '📄', category: 'evidence', angle: 30, ring: 'inner' },
+    { id: 'linked', label: 'Linked Cases', subLabel: `${caseItem.linkedCases.length} Cases`, icon: '🔗', category: 'location', angle: 90, ring: 'inner' },
+    { id: 'financial', label: 'Financial Trail', subLabel: `${caseItem.entities.filter(e => e.startsWith('acct')).length || 0} Accounts`, icon: '💳', category: 'assets', angle: 150, ring: 'inner' },
+    { id: 'witnesses', label: 'Witnesses', subLabel: '2 Persons', icon: '👥', category: 'people', angle: 210, ring: 'inner' },
 
-    { id: 'timeline',   label: 'Timeline',       subLabel: `${caseItem.timeline.length} Events`,               icon: '🕐', category: 'intel',    angle: -90,  ring: 'outer' },
-    { id: 'analysis',   label: 'AI Analysis',    subLabel: 'Insights Ready',                                   icon: '🤖', category: 'intel',    angle: -45,  ring: 'outer' },
-    { id: 'network',    label: 'Network Links',  subLabel: '18 Connections',                                   icon: '🕸', category: 'intel',    angle: 0,    ring: 'outer' },
-    { id: 'vehicles',   label: 'Vehicles',       subLabel: `${caseItem.entities.filter(e => e.startsWith('veh')).length} Vehicles`, icon: '🚗', category: 'assets', angle: 45, ring: 'outer' },
-    { id: 'calls',      label: 'Call Records',   subLabel: '158 Records',                                      icon: '📞', category: 'assets',   angle: 90,   ring: 'outer' },
-    { id: 'crimescene', label: 'Crime Scene',    subLabel: caseItem.location.slice(0, 22),                    icon: '📍', category: 'location', angle: 135,  ring: 'outer' },
-    { id: 'officer',    label: 'Inv. Officer',   subLabel: caseItem.investigatingOfficer,                     icon: '🎖', category: 'people',   angle: 180,  ring: 'outer' },
-    { id: 'cctv',       label: 'CCTV Footage',   subLabel: `${caseItem.evidence.filter(e => e.type === 'cctv').length} Clips`, icon: '📹', category: 'evidence', angle: -135, ring: 'outer' },
+    { id: 'timeline', label: 'Timeline', subLabel: `${caseItem.timeline.length} Events`, icon: '🕐', category: 'intel', angle: -90, ring: 'outer' },
+    { id: 'analysis', label: 'AI Analysis', subLabel: 'Insights Ready', icon: '🤖', category: 'intel', angle: -45, ring: 'outer' },
+    { id: 'network', label: 'Network Links', subLabel: '18 Connections', icon: '🕸', category: 'intel', angle: 0, ring: 'outer' },
+    { id: 'vehicles', label: 'Vehicles', subLabel: `${caseItem.entities.filter(e => e.startsWith('veh')).length} Vehicles`, icon: '🚗', category: 'assets', angle: 45, ring: 'outer' },
+    { id: 'calls', label: 'Call Records', subLabel: '158 Records', icon: '📞', category: 'assets', angle: 90, ring: 'outer' },
+    { id: 'crimescene', label: 'Crime Scene', subLabel: caseItem.location.slice(0, 22), icon: '📍', category: 'location', angle: 135, ring: 'outer' },
+    { id: 'officer', label: 'Inv. Officer', subLabel: caseItem.investigatingOfficer, icon: '🎖', category: 'people', angle: 180, ring: 'outer' },
+    { id: 'cctv', label: 'CCTV Footage', subLabel: `${caseItem.evidence.filter(e => e.type === 'cctv').length} Clips`, icon: '📹', category: 'evidence', angle: -135, ring: 'outer' },
   ];
 
   // ── Layout math ─────────────────────────────────────────────────────────────
   const safeM = 46;
-  const maxR  = cW > 0 ? Math.max(0, cW / 2 - safeM) : 0;
+  const maxR = cW > 0 ? Math.max(0, cW / 2 - safeM) : 0;
 
-  const iW  = Math.min(94, Math.max(70, maxR * 0.30));
-  const iH  = iW * 0.82;
-  const oW  = Math.min(88, Math.max(64, maxR * 0.26));
-  const oH  = oW * 0.8;
+  const iW = Math.min(94, Math.max(70, maxR * 0.30));
+  const iH = iW * 0.82;
+  const oW = Math.min(88, Math.max(64, maxR * 0.26));
+  const oH = oW * 0.8;
   const cNW = Math.min(172, Math.max(140, maxR * 0.52));
   const cNH = cNW * 0.78;
 
   const halfDiag = (w: number, h: number) => Math.sqrt((w / 2) ** 2 + (h / 2) ** 2);
-  const innerR   = halfDiag(cNW, cNH) + halfDiag(iW, iH) + RING_GAP;
-  const outerR   = innerR + halfDiag(iW, iH) + halfDiag(oW, oH) + RING_GAP;
+  const innerR = halfDiag(cNW, cNH) + halfDiag(iW, iH) + RING_GAP;
+  const outerR = innerR + halfDiag(iW, iH) + halfDiag(oW, oH) + RING_GAP;
 
-  const cx      = cW / 2;
-  const cy      = TOP_PAD + outerR + oH / 2;
+  const cx = cW / 2;
+  const cy = TOP_PAD + outerR + oH / 2;
   const canvasH = cy + outerR + oH / 2 + BOTTOM_PAD;
 
   const getPos = (angle: number, ring: 'inner' | 'outer') => {
-    const r   = ring === 'inner' ? innerR : outerR;
+    const r = ring === 'inner' ? innerR : outerR;
     const rad = (angle * Math.PI) / 180;
     return { x: cx + r * Math.cos(rad), y: cy + r * Math.sin(rad) };
   };
@@ -370,7 +371,7 @@ export const CaseDetailScreen: React.FC<Props> = ({ navigation, route }) => {
   };
 
   // ── Pulse ───────────────────────────────────────────────────────────────────
-  const pulseScale   = pulseAnim.interpolate({ inputRange: [0, 1], outputRange: [1, 1.15] });
+  const pulseScale = pulseAnim.interpolate({ inputRange: [0, 1], outputRange: [1, 1.15] });
   const pulseOpacity = pulseAnim.interpolate({ inputRange: [0, 0.5, 1], outputRange: [0.08, 0.22, 0.08] });
 
   // ── SVG connections ─────────────────────────────────────────────────────────
@@ -378,12 +379,12 @@ export const CaseDetailScreen: React.FC<Props> = ({ navigation, route }) => {
     const isNodeOpen = (id: string) => openedNodes.has(id);
     if (cW === 0) return null;
     return nodeDefs.map((node) => {
-      const pos      = getPos(node.angle, node.ring);
-      const color    = CAT_COLOR[node.category];
+      const pos = getPos(node.angle, node.ring);
+      const color = CAT_COLOR[node.category];
       const isActive = hoveredNode === node.id || openedNodes.has(node.id);
       const dx = pos.x - cx; const dy = pos.y - cy;
       const bx = cx + dx * 0.5 + (-dy) * 0.12;
-      const by = cy + dy * 0.5 + dx   * 0.12;
+      const by = cy + dy * 0.5 + dx * 0.12;
       return (
         <Path
           key={node.id}
@@ -400,24 +401,26 @@ export const CaseDetailScreen: React.FC<Props> = ({ navigation, route }) => {
 
   // ── Satellite node card ─────────────────────────────────────────────────────
   const renderNode = (node: NodeDef) => {
-    const pos        = getPos(node.angle, node.ring);
-    const nW         = node.ring === 'inner' ? iW : oW;
-    const nH         = node.ring === 'inner' ? iH : oH;
-    const enter      = nodeEnter.current[node.id] ?? new Animated.Value(1);
-    const sc         = nodePress.current[node.id]  ?? new Animated.Value(1);
-    const tY         = enter.interpolate({ inputRange: [0, 1], outputRange: [12, 0] });
-    const isHov      = hoveredNode === node.id;
+    const pos = getPos(node.angle, node.ring);
+    const nW = node.ring === 'inner' ? iW : oW;
+    const nH = node.ring === 'inner' ? iH : oH;
+    const enter = nodeEnter.current[node.id] ?? new Animated.Value(1);
+    const sc = nodePress.current[node.id] ?? new Animated.Value(1);
+    const tY = enter.interpolate({ inputRange: [0, 1], outputRange: [12, 0] });
+    const isHov = hoveredNode === node.id;
     const isSelected = openedNodes.has(node.id);
-    const accent     = CAT_COLOR[node.category];
-    const tint       = CAT_TINT[node.category];
+    const accent = CAT_COLOR[node.category];
+    const tint = CAT_TINT[node.category];
 
     return (
       <Animated.View
         key={node.id}
         style={[
           styles.nodeWrapper,
-          { left: pos.x - nW / 2, top: pos.y - nH / 2, width: nW, height: nH,
-            opacity: enter, transform: [{ translateY: tY }, { scale: sc }] },
+          {
+            left: pos.x - nW / 2, top: pos.y - nH / 2, width: nW, height: nH,
+            opacity: enter, transform: [{ translateY: tY }, { scale: sc }]
+          },
         ]}
       >
         <Pressable
@@ -427,13 +430,13 @@ export const CaseDetailScreen: React.FC<Props> = ({ navigation, route }) => {
           style={[
             styles.nodeCard,
             {
-              borderColor:     isSelected ? accent : isHov ? accent + 'BB' : Colors.line,
-              backgroundColor: isSelected ? tint   : isHov ? tint          : Colors.card,
-              shadowColor:     accent,
-              shadowOpacity:   isSelected ? 0.30 : isHov ? 0.18 : 0.06,
-              shadowRadius:    isSelected ? 14   : isHov ? 9    : 3,
-              shadowOffset:    { width: 0, height: 2 },
-              elevation:       isSelected ? 10   : isHov ? 6    : 2,
+              borderColor: isSelected ? accent : isHov ? accent + 'BB' : Colors.line,
+              backgroundColor: isSelected ? tint : isHov ? tint : Colors.card,
+              shadowColor: accent,
+              shadowOpacity: isSelected ? 0.30 : isHov ? 0.18 : 0.06,
+              shadowRadius: isSelected ? 14 : isHov ? 9 : 3,
+              shadowOffset: { width: 0, height: 2 },
+              elevation: isSelected ? 10 : isHov ? 6 : 2,
             },
           ]}
           accessibilityRole="button"
@@ -461,16 +464,20 @@ export const CaseDetailScreen: React.FC<Props> = ({ navigation, route }) => {
         <Animated.View
           style={[
             styles.pulseRing,
-            { width: cNW + 28, height: cNH + 28, borderRadius: 14,
+            {
+              width: cNW + 28, height: cNH + 28, borderRadius: 14,
               left: cx - (cNW + 28) / 2, top: cy - (cNH + 28) / 2,
-              borderColor: pc, transform: [{ scale: pulseScale }], opacity: pulseOpacity },
+              borderColor: pc, transform: [{ scale: pulseScale }], opacity: pulseOpacity
+            },
           ]}
         />
         <Animated.View
           style={[
             styles.centerWrapper,
-            { left: cx - cNW / 2, top: cy - cNH / 2, width: cNW, height: cNH,
-              transform: [{ scale: centerScale }] },
+            {
+              left: cx - cNW / 2, top: cy - cNH / 2, width: cNW, height: cNH,
+              transform: [{ scale: centerScale }]
+            },
           ]}
         >
           <View style={[styles.centerCard, { borderColor: pc + 'BB' }]}>
@@ -523,10 +530,10 @@ export const CaseDetailScreen: React.FC<Props> = ({ navigation, route }) => {
             {caseItem.entities.length === 0
               ? <Text style={popupStyles.emptyText}>No entities recorded.</Text>
               : caseItem.entities.map((e, i) => (
-                  <View key={i} style={[popupStyles.chip, { borderColor: accent + '55', backgroundColor: accent + '12', marginBottom: 6 }]}>
-                    <Text style={[popupStyles.chipText, { color: accent }]}>{e}</Text>
-                  </View>
-                ))}
+                <View key={i} style={[popupStyles.chip, { borderColor: accent + '55', backgroundColor: accent + '12', marginBottom: 6 }]}>
+                  <Text style={[popupStyles.chipText, { color: accent }]}>{e}</Text>
+                </View>
+              ))}
             <Text style={[popupStyles.sectionHead, { marginTop: 15 }]}>SUSPECTS PROFILE FILES</Text>
             {suspectNames.map((name, i) => (
               <Pressable
@@ -554,18 +561,18 @@ export const CaseDetailScreen: React.FC<Props> = ({ navigation, route }) => {
             {caseItem.evidence.length === 0
               ? <Text style={popupStyles.emptyText}>No evidence recorded yet.</Text>
               : caseItem.evidence.map((ev) => (
-                  <Pressable
-                    key={ev.id}
-                    style={popupStyles.listRow}
-                    onPress={() => { setOpenedNodes(new Map()); navigation.navigate('EvidenceViewer', { caseId, evidenceId: ev.id }); }}
-                  >
-                    <View style={{ flex: 1 }}>
-                      <Text style={popupStyles.listTitle}>{ev.title}</Text>
-                      <Text style={popupStyles.listSub}>{ev.description}</Text>
-                    </View>
-                    <Text style={[popupStyles.arrow, { color: accent }]}>›</Text>
-                  </Pressable>
-                ))}
+                <Pressable
+                  key={ev.id}
+                  style={popupStyles.listRow}
+                  onPress={() => { setOpenedNodes(new Map()); navigation.navigate('EvidenceViewer', { caseId, evidenceId: ev.id }); }}
+                >
+                  <View style={{ flex: 1 }}>
+                    <Text style={popupStyles.listTitle}>{ev.title}</Text>
+                    <Text style={popupStyles.listSub}>{ev.description}</Text>
+                  </View>
+                  <Text style={[popupStyles.arrow, { color: accent }]}>›</Text>
+                </Pressable>
+              ))}
           </View>
         );
 
@@ -599,15 +606,15 @@ export const CaseDetailScreen: React.FC<Props> = ({ navigation, route }) => {
             {caseItem.linkedCases.length === 0
               ? <Text style={popupStyles.emptyText}>No linked cases found.</Text>
               : caseItem.linkedCases.map((id) => (
-                  <Pressable
-                    key={id}
-                    style={popupStyles.listRow}
-                    onPress={() => { setOpenedNodes(new Map()); navigation.push('CaseDetail', { caseId: id }); }}
-                  >
-                    <Text style={[popupStyles.listTitle, { color: accent }]}>→ {id}</Text>
-                    <Text style={[popupStyles.arrow, { color: accent }]}>›</Text>
-                  </Pressable>
-                ))}
+                <Pressable
+                  key={id}
+                  style={popupStyles.listRow}
+                  onPress={() => { setOpenedNodes(new Map()); navigation.push('CaseDetail', { caseId: id }); }}
+                >
+                  <Text style={[popupStyles.listTitle, { color: accent }]}>→ {id}</Text>
+                  <Text style={[popupStyles.arrow, { color: accent }]}>›</Text>
+                </Pressable>
+              ))}
           </View>
         );
 
@@ -710,7 +717,7 @@ export const CaseDetailScreen: React.FC<Props> = ({ navigation, route }) => {
             <KVRow label="Sector" value={caseItem.sector} />
             {caseItem.latitude !== undefined && (
               <>
-                <KVRow label="Latitude"  value={caseItem.latitude.toFixed(5)} />
+                <KVRow label="Latitude" value={caseItem.latitude.toFixed(5)} />
                 <KVRow label="Longitude" value={caseItem.longitude?.toFixed(5) ?? 'N/A'} />
               </>
             )}
@@ -726,12 +733,12 @@ export const CaseDetailScreen: React.FC<Props> = ({ navigation, route }) => {
               <Text style={popupStyles.officerRole}>Investigating Officer</Text>
             </View>
             {[
-              ['FIR Number',  caseItem.firNumber],
-              ['Filed',       caseItem.filedDate],
+              ['FIR Number', caseItem.firNumber],
+              ['Filed', caseItem.filedDate],
               ['Complainant', caseItem.complainant],
-              ['Status',      caseItem.status.toUpperCase()],
-              ['Category',    caseItem.category],
-              ['Sector',      caseItem.sector],
+              ['Status', caseItem.status.toUpperCase()],
+              ['Category', caseItem.category],
+              ['Sector', caseItem.sector],
             ].map(([k, v]) => <KVRow key={k} label={k} value={v} />)}
           </View>
         );
@@ -771,191 +778,612 @@ export const CaseDetailScreen: React.FC<Props> = ({ navigation, route }) => {
 
   // ── Status color helper ─────────────────────────────────────────────────────
   const statusColor =
-    caseItem.status === 'open'    ? Colors.green  :
-    caseItem.status === 'closed'  ? Colors.red    :
-    Colors.amber;
+    caseItem.status === 'open' ? Colors.green :
+      caseItem.status === 'closed' ? Colors.red :
+        Colors.amber;
 
   // ── Main render ─────────────────────────────────────────────────────────────
   return (
-    <Animated.View style={[styles.screen, { paddingTop: insets.top, opacity: globalFade }]}>
+    <>
+      <Animated.View style={[styles.screen, { paddingTop: insets.top, opacity: globalFade }]}>
 
-      {/* ── Header bar ──────────────────────────────────────────────────── */}
-      <View style={styles.header}>
-        <Pressable onPress={() => navigation.goBack()} style={styles.backBtn}>
-          <Text style={styles.backArrow}>←</Text>
-          <Text style={styles.backLabel}>Cases</Text>
-        </Pressable>
-        <View style={styles.headerMid}>
-          <Text style={styles.headerFir}>{caseItem.firNumber}</Text>
-          <Text style={styles.headerTitle} numberOfLines={1}>{caseItem.title}</Text>
-        </View>
-        <View style={styles.headerRight}>
-          <View style={[styles.headerPriorityPill, { borderColor: pc, backgroundColor: pc + '15' }]}>
-            <View style={[styles.headerPriorityDot, { backgroundColor: pc }]} />
-            <Text style={[styles.headerPriorityText, { color: pc }]}>{PRIORITY_LABELS[caseItem.priority]}</Text>
-          </View>
-          <Pressable
-            onPress={() => navigation.navigate('ReportPreview', { caseId })}
-            style={styles.reportBtn}
-          >
-            <Text style={styles.reportBtnText}>Report ›</Text>
+        {/* ── Header bar ──────────────────────────────────────────────────── */}
+        <View style={styles.header}>
+          <Pressable onPress={() => navigation.goBack()} style={styles.backBtn}>
+            <Text style={styles.backArrow}>←</Text>
+            <Text style={styles.backLabel}>Cases</Text>
           </Pressable>
+          <View style={styles.headerMid}>
+            <Text style={styles.headerFir}>{caseItem.firNumber}</Text>
+            <Text style={styles.headerTitle} numberOfLines={1}>{caseItem.title}</Text>
+          </View>
+          <View style={styles.headerRight}>
+            <View style={[styles.headerPriorityPill, { borderColor: pc, backgroundColor: pc + '15' }]}>
+              <View style={[styles.headerPriorityDot, { backgroundColor: pc }]} />
+              <Text style={[styles.headerPriorityText, { color: pc }]}>{PRIORITY_LABELS[caseItem.priority]}</Text>
+            </View>
+            <Pressable
+              onPress={() => navigation.navigate('ReportPreview', { caseId })}
+              style={styles.reportBtn}
+            >
+              <Text style={styles.reportBtnText}>Report ›</Text>
+            </Pressable>
+          </View>
         </View>
-      </View>
 
-      {/* ── Body: two-column layout ──────────────────────────────────────── */}
-      <View style={styles.body}>
+        {/* ── Body: two-column layout ──────────────────────────────────────── */}
+        <View style={styles.body}>
 
-        {/* ── LEFT PANEL: Case Metadata + Description ──────────────────── */}
-        <ScrollView style={styles.leftPanel} showsVerticalScrollIndicator={false}>
+          {/* ── LEFT PANEL: Case Metadata + Description ──────────────────── */}
+          <ScrollView style={styles.leftPanel} showsVerticalScrollIndicator={false}>
 
-          {/* Case Metadata Card */}
-          <View style={styles.metaCard}>
-            <View style={styles.metaCardHeader}>
-              <View style={styles.metaCardHeaderIcon}>
-                <Text style={{ fontSize: 16 }}>📋</Text>
+            {/* Case Metadata Card */}
+            <View style={styles.metaCard}>
+              <View style={styles.metaCardHeader}>
+                <View style={styles.metaCardHeaderIcon}>
+                  <Text style={{ fontSize: 16 }}>📋</Text>
+                </View>
+                <Text style={styles.metaCardTitle}>Case Metadata</Text>
               </View>
-              <Text style={styles.metaCardTitle}>Case Metadata</Text>
-            </View>
-            <View style={styles.metaDivider} />
+              <View style={styles.metaDivider} />
 
-            <View style={styles.metaRow}>
-              <Text style={styles.metaLabel}>FIR Number</Text>
-              <Text style={styles.metaValue}>{caseItem.firNumber}</Text>
+              <View style={styles.metaRow}>
+                <Text style={styles.metaLabel}>FIR Number</Text>
+                <Text style={styles.metaValue}>{caseItem.firNumber}</Text>
+              </View>
+              <View style={styles.metaRow}>
+                <Text style={styles.metaLabel}>Filed</Text>
+                <Text style={styles.metaValue}>{caseItem.filedDate}</Text>
+              </View>
+              <View style={styles.metaRow}>
+                <Text style={styles.metaLabel}>Handled By</Text>
+                <Text style={styles.metaValue}>{caseItem.investigatingOfficer}</Text>
+              </View>
+              <View style={styles.metaRow}>
+                <Text style={styles.metaLabel}>Sector</Text>
+                <Text style={styles.metaValue}>{caseItem.sector}</Text>
+              </View>
+              <View style={styles.metaRow}>
+                <Text style={styles.metaLabel}>Category</Text>
+                <Text style={styles.metaValue}>{caseItem.category}</Text>
+              </View>
+              <View style={[styles.metaRow, { borderBottomWidth: 0 }]}>
+                <Text style={styles.metaLabel}>Status</Text>
+                <View style={[styles.statusBadge, { backgroundColor: statusColor + '18', borderColor: statusColor + '44' }]}>
+                  <View style={[styles.statusDot, { backgroundColor: statusColor }]} />
+                  <Text style={[styles.statusText, { color: statusColor }]}>
+                    {caseItem.status.toUpperCase()}
+                  </Text>
+                </View>
+              </View>
             </View>
-            <View style={styles.metaRow}>
-              <Text style={styles.metaLabel}>Filed</Text>
-              <Text style={styles.metaValue}>{caseItem.filedDate}</Text>
-            </View>
-            <View style={styles.metaRow}>
-              <Text style={styles.metaLabel}>Handled By</Text>
-              <Text style={styles.metaValue}>{caseItem.investigatingOfficer}</Text>
-            </View>
-            <View style={styles.metaRow}>
-              <Text style={styles.metaLabel}>Sector</Text>
-              <Text style={styles.metaValue}>{caseItem.sector}</Text>
-            </View>
-            <View style={styles.metaRow}>
-              <Text style={styles.metaLabel}>Category</Text>
-              <Text style={styles.metaValue}>{caseItem.category}</Text>
-            </View>
-            <View style={[styles.metaRow, { borderBottomWidth: 0 }]}>
-              <Text style={styles.metaLabel}>Status</Text>
-              <View style={[styles.statusBadge, { backgroundColor: statusColor + '18', borderColor: statusColor + '44' }]}>
-                <View style={[styles.statusDot, { backgroundColor: statusColor }]} />
-                <Text style={[styles.statusText, { color: statusColor }]}>
-                  {caseItem.status.toUpperCase()}
+
+            {/* Case Description Card */}
+            <View style={styles.descCard}>
+              <View style={styles.metaCardHeader}>
+                <View style={styles.metaCardHeaderIcon}>
+                  <Text style={{ fontSize: 16 }}>📝</Text>
+                </View>
+                <Text style={styles.metaCardTitle}>Case Description</Text>
+              </View>
+              <View style={styles.metaDivider} />
+              <Text style={styles.descText}>
+                {caseItem.description || 'No description provided for this case.'}
+              </Text>
+
+              {/* Complainant row */}
+              <View style={[styles.descInfoRow, { marginTop: 14 }]}>
+                <Text style={styles.descInfoLabel}>Complainant</Text>
+                <Text style={styles.descInfoValue}>{caseItem.complainant}</Text>
+              </View>
+              <View style={styles.descInfoRow}>
+                <Text style={styles.descInfoLabel}>Location</Text>
+                <Text style={styles.descInfoValue} numberOfLines={2}>{caseItem.location}</Text>
+              </View>
+
+              {/* Synopsis badge */}
+              <View style={[styles.synopsisBadge, { borderColor: pc + '44', backgroundColor: pc + '0A' }]}>
+                <Text style={styles.synopsisBadgeLabel}>INTELLIGENCE SYNOPSIS</Text>
+                <Text style={styles.synopsisBadgeText}>
+                  {caseItem.description || 'No intelligence synopsis available.'}
                 </Text>
               </View>
             </View>
-          </View>
 
-          {/* Case Description Card */}
-          <View style={styles.descCard}>
-            <View style={styles.metaCardHeader}>
-              <View style={styles.metaCardHeaderIcon}>
-                <Text style={{ fontSize: 16 }}>📝</Text>
+            {/* Evidences Card — clickable, opens popup */}
+            <Pressable
+              style={styles.evidencesCard}
+              onPress={() => setEvidencesOpen(true)}
+              accessibilityRole="button"
+              accessibilityLabel="View case evidences"
+            >
+              <View style={styles.metaCardHeader}>
+                <View style={[styles.metaCardHeaderIcon, { backgroundColor: Colors.amber + '18' }]}>
+                  <Text style={{ fontSize: 16 }}>📁</Text>
+                </View>
+                <Text style={styles.metaCardTitle}>Evidences</Text>
+                <View style={{ flex: 1 }} />
+                <View style={styles.evidencesCountRow}>
+                  <View style={[styles.evidencesBadge, { backgroundColor: Colors.amberDim, borderColor: Colors.amber + '55' }]}>
+                    <Text style={[styles.evidencesBadgeText, { color: Colors.amber }]}>
+                      {caseItem.evidence.length} items
+                    </Text>
+                  </View>
+                  <Text style={styles.evidencesArrow}>›</Text>
+                </View>
               </View>
-              <Text style={styles.metaCardTitle}>Case Description</Text>
-            </View>
-            <View style={styles.metaDivider} />
-            <Text style={styles.descText}>
-              {caseItem.description || 'No description provided for this case.'}
-            </Text>
+              <View style={styles.metaDivider} />
+              <View style={styles.evidencesPreviewRow}>
+                {[
+                  { label: 'Activity Logs', count: 3, color: Colors.steel },
+                  { label: 'Acquisition', count: 3, color: Colors.green },
+                  { label: 'Voice Memos', count: 2, color: Colors.amber },
+                ].map((item, i) => (
+                  <View key={i} style={styles.evidencesPreviewItem}>
+                    <View style={[styles.evidencesPreviewDot, { backgroundColor: item.color }]} />
+                    <Text style={styles.evidencesPreviewLabel}>{item.label}</Text>
+                    <Text style={[styles.evidencesPreviewCount, { color: item.color }]}>{item.count}</Text>
+                  </View>
+                ))}
+              </View>
+              <View style={styles.evidencesTapHint}>
+                <Text style={styles.evidencesTapHintText}>Tap to open evidence vault →</Text>
+              </View>
+            </Pressable>
 
-            {/* Complainant row */}
-            <View style={[styles.descInfoRow, { marginTop: 14 }]}>
-              <Text style={styles.descInfoLabel}>Complainant</Text>
-              <Text style={styles.descInfoValue}>{caseItem.complainant}</Text>
-            </View>
-            <View style={styles.descInfoRow}>
-              <Text style={styles.descInfoLabel}>Location</Text>
-              <Text style={styles.descInfoValue} numberOfLines={2}>{caseItem.location}</Text>
-            </View>
-
-            {/* Synopsis badge */}
-            <View style={[styles.synopsisBadge, { borderColor: pc + '44', backgroundColor: pc + '0A' }]}>
-              <Text style={styles.synopsisBadgeLabel}>INTELLIGENCE SYNOPSIS</Text>
-              <Text style={styles.synopsisBadgeText}>
-                {caseItem.description || 'No intelligence synopsis available.'}
-              </Text>
-            </View>
-          </View>
-
-          <View style={{ height: 24 }} />
-        </ScrollView>
-
-        {/* ── RIGHT PANEL: Network Graph ───────────────────────────────── */}
-        <View
-          style={styles.graphContainer}
-          onLayout={(e: LayoutChangeEvent) => {
-            setCW(e.nativeEvent.layout.width);
-            setContainerH(e.nativeEvent.layout.height);
-          }}
-        >
-          <ScrollView
-            style={{ flex: 1 }}
-            contentContainerStyle={{ width: cW || '100%', minHeight: canvasH }}
-            showsVerticalScrollIndicator
-            bounces
-          >
-            <View style={{ width: cW, height: canvasH }}>
-              {cW > 0 && (
-                <Svg
-                  width={cW}
-                  height={canvasH}
-                  style={StyleSheet.absoluteFill}
-                  pointerEvents="none"
-                >
-                  <Defs>
-                    <SvgRadialGradient id="centerGlow" cx="50%" cy="50%" r="50%">
-                      <Stop offset="0%"   stopColor={pc} stopOpacity="0.18" />
-                      <Stop offset="100%" stopColor={pc} stopOpacity="0" />
-                    </SvgRadialGradient>
-                  </Defs>
-                  <Circle cx={cx} cy={cy} r={cNW * 0.95} fill="url(#centerGlow)" />
-                  {renderConnections()}
-                  <Circle cx={cx} cy={cy} r={innerR} stroke={Colors.line} strokeWidth="0.5" strokeDasharray="2,6" fill="none" opacity={0.35} />
-                  <Circle cx={cx} cy={cy} r={outerR} stroke={Colors.line} strokeWidth="0.5" strokeDasharray="2,10" fill="none" opacity={0.20} />
-                  {nodeDefs.filter(n => n.ring === 'inner').map(n => {
-                    const p = getPos(n.angle, n.ring);
-                    return <Circle key={`dot-${n.id}`} cx={p.x} cy={p.y} r={3} fill={CAT_COLOR[n.category]} opacity={0.42} />;
-                  })}
-                </Svg>
-              )}
-
-              {cW > 0 && nodeDefs.map(renderNode)}
-              {renderCenterNode()}
-            </View>
+            <View style={{ height: 24 }} />
           </ScrollView>
 
-          {/* ── Hint text when no nodes are open */}
-          {openedNodes.size === 0 && (
-            <View style={styles.hintOverlay}>
-              <Text style={styles.hintText}>👆 Tap any node to inspect details</Text>
-            </View>
-          )}
-
-          {/* ── Draggable Popups — one per opened node, staggered so they don't overlap */}
-          {containerH > 0 && Array.from(openedNodes.values()).map((node, idx) => (
-            <DraggablePopup
-              key={node.id}
-              node={node}
-              onClose={() => closeNode(node.id)}
-              containerW={cW}
-              containerH={containerH}
-              accentColor={CAT_COLOR[node.category]}
-              tintColor={CAT_TINT[node.category]}
-              offsetIndex={idx}
+          {/* ── RIGHT PANEL: Network Graph ───────────────────────────────── */}
+          <View
+            style={styles.graphContainer}
+            onLayout={(e: LayoutChangeEvent) => {
+              setCW(e.nativeEvent.layout.width);
+              setContainerH(e.nativeEvent.layout.height);
+            }}
+          >
+            <ScrollView
+              style={{ flex: 1 }}
+              contentContainerStyle={{ width: cW || '100%', minHeight: canvasH }}
+              showsVerticalScrollIndicator
+              bounces
             >
-              {getPopupBody(node)}
-            </DraggablePopup>
-          ))}
+              <View style={{ width: cW, height: canvasH }}>
+                {cW > 0 && (
+                  <Svg
+                    width={cW}
+                    height={canvasH}
+                    style={StyleSheet.absoluteFill}
+                    pointerEvents="none"
+                  >
+                    <Defs>
+                      <SvgRadialGradient id="centerGlow" cx="50%" cy="50%" r="50%">
+                        <Stop offset="0%" stopColor={pc} stopOpacity="0.18" />
+                        <Stop offset="100%" stopColor={pc} stopOpacity="0" />
+                      </SvgRadialGradient>
+                    </Defs>
+                    <Circle cx={cx} cy={cy} r={cNW * 0.95} fill="url(#centerGlow)" />
+                    {renderConnections()}
+                    <Circle cx={cx} cy={cy} r={innerR} stroke={Colors.line} strokeWidth="0.5" strokeDasharray="2,6" fill="none" opacity={0.35} />
+                    <Circle cx={cx} cy={cy} r={outerR} stroke={Colors.line} strokeWidth="0.5" strokeDasharray="2,10" fill="none" opacity={0.20} />
+                    {nodeDefs.filter(n => n.ring === 'inner').map(n => {
+                      const p = getPos(n.angle, n.ring);
+                      return <Circle key={`dot-${n.id}`} cx={p.x} cy={p.y} r={3} fill={CAT_COLOR[n.category]} opacity={0.42} />;
+                    })}
+                  </Svg>
+                )}
+
+                {cW > 0 && nodeDefs.map(renderNode)}
+                {renderCenterNode()}
+              </View>
+            </ScrollView>
+
+            {/* ── Hint text when no nodes are open */}
+            {openedNodes.size === 0 && (
+              <View style={styles.hintOverlay}>
+                <Text style={styles.hintText}>👆 Tap any node to inspect details</Text>
+              </View>
+            )}
+
+            {/* ── Draggable Popups — one per opened node, staggered so they don't overlap */}
+            {containerH > 0 && Array.from(openedNodes.values()).map((node, idx) => (
+              <DraggablePopup
+                key={node.id}
+                node={node}
+                onClose={() => closeNode(node.id)}
+                containerW={cW}
+                containerH={containerH}
+                accentColor={CAT_COLOR[node.category]}
+                tintColor={CAT_TINT[node.category]}
+                offsetIndex={idx}
+              >
+                {getPopupBody(node)}
+              </DraggablePopup>
+            ))}
+          </View>
         </View>
-      </View>
-    </Animated.View>
+      </Animated.View>
+
+      {/* ── Evidences Popup Modal */}
+      {evidencesOpen && (
+        <EvidencesPopupModal
+          visible={evidencesOpen}
+          onClose={() => setEvidencesOpen(false)}
+          caseItem={caseItem}
+        />
+      )}
+    </>
   );
 };
+
+// ─── Evidences Modal Component ────────────────────────────────────────────────
+const EVIDENCE_ACQUISITION_DATA = [
+  { label: 'CCTV Footage', pct: 75, color: Colors.steel },
+  { label: 'CDR Analytics', pct: 40, color: Colors.amber },
+  { label: 'Forensics Lab', pct: 90, color: Colors.green },
+];
+const VOICE_MEMOS_DATA = [
+  { title: 'Suspect safehouse tip-off — CI report', duration: '0:45', date: 'Today, 11:20' },
+  { title: 'Witness statement — Lakshmi N.', duration: '1:12', date: 'Yesterday, 16:30' },
+];
+const ACTIVITY_LOGS_DATA = [
+  { time: '11:15', label: 'CCTV Logs Imported', desc: 'MG Road camera 04 raw stream archived to evidence store.', color: Colors.steel },
+  { time: '09:40', label: 'Fingerprint Match Confirmed', desc: 'Suspect prints matched against latent lift exhibit L-08.', color: Colors.green },
+  { time: '08:00', label: 'Shift Briefing Completed', desc: 'Whitefield Sub-Division briefing attended. 3 active cases reviewed.', color: Colors.amber },
+];
+
+interface EvidencesModalProps {
+  visible: boolean;
+  onClose: () => void;
+  caseItem: any;
+}
+
+const EvidencesPopupModal: React.FC<EvidencesModalProps> = ({ visible, onClose, caseItem }) => {
+  const [activeTab, setActiveTab]   = useState<'activity' | 'acquisition' | 'memos'>('activity');
+  const opacityAnim = useRef(new Animated.Value(0)).current;
+  const scaleAnim   = useRef(new Animated.Value(0.93)).current;
+
+  // Drag — use a ref for position + forceUpdate to re-render
+  const dragOffset  = useRef({ x: 0, y: 0 });
+  const dragStart   = useRef({ px: 0, py: 0, ox: 0, oy: 0 });
+  const [tick, setTick] = useState(0);
+
+  const dragResponder = useRef(
+    PanResponder.create({
+      onStartShouldSetPanResponder: () => true,
+      onMoveShouldSetPanResponder:  () => true,
+      onPanResponderGrant: (e) => {
+        dragStart.current = {
+          px: e.nativeEvent.pageX,
+          py: e.nativeEvent.pageY,
+          ox: dragOffset.current.x,
+          oy: dragOffset.current.y,
+        };
+      },
+      onPanResponderMove: (e) => {
+        dragOffset.current = {
+          x: dragStart.current.ox + (e.nativeEvent.pageX - dragStart.current.px),
+          y: dragStart.current.oy + (e.nativeEvent.pageY - dragStart.current.py),
+        };
+        setTick(t => t + 1);
+      },
+    })
+  ).current;
+
+  useEffect(() => {
+    if (visible) {
+      dragOffset.current = { x: 0, y: 0 };
+      opacityAnim.setValue(0);
+      scaleAnim.setValue(0.93);
+      Animated.parallel([
+        Animated.timing(opacityAnim, { toValue: 1, duration: 200, useNativeDriver: false }),
+        Animated.spring(scaleAnim,   { toValue: 1, friction: 8, tension: 90, useNativeDriver: false }),
+      ]).start();
+    }
+  }, [visible]);
+
+
+  const TABS = [
+    { id: 'activity' as const, label: 'Activity Logs', icon: '📋' },
+    { id: 'acquisition' as const, label: 'Acquisition', icon: '🔍' },
+    { id: 'memos' as const, label: 'Voice Memos', icon: '🎙' },
+  ];
+
+  return (
+    <Modal transparent visible={visible} animationType="none" onRequestClose={onClose}>
+      {/* Dimmed full-screen backdrop — tap outside to close */}
+      <View style={evStyles.backdropContainer}>
+        <Pressable style={evStyles.backdrop} onPress={onClose} />
+
+        {/* Panel — centred by flex, translated by drag (tick forces re-render) */}
+        <Animated.View
+          style={[
+            evStyles.panel,
+            {
+              opacity: opacityAnim,
+              transform: [
+                { translateX: dragOffset.current.x },
+                { translateY: dragOffset.current.y },
+                { scale: scaleAnim },
+              ],
+            },
+          ]}
+        >
+          {/* ── Drag handle / Header ── */}
+          <View
+            {...dragResponder.panHandlers}
+            style={evStyles.header}
+          >
+            <View style={evStyles.headerLeft}>
+              <View style={evStyles.iconBadge}>
+                <Text style={{ fontSize: 18 }}>📁</Text>
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={evStyles.title}>Evidences</Text>
+                <Text style={evStyles.subtitle} numberOfLines={1}>
+                  {caseItem.firNumber} · {caseItem.title}
+                </Text>
+              </View>
+            </View>
+            <View style={evStyles.headerRight}>
+              <View style={evStyles.dragHintStrip}>
+                {[0, 1, 2].map(i => <View key={i} style={evStyles.dragDot} />)}
+              </View>
+              <TouchableOpacity style={evStyles.closeBtn} onPress={onClose}>
+                <Text style={evStyles.closeBtnText}>✕</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+
+          {/* Count strip */}
+          <View style={evStyles.countStrip}>
+            {[
+              { num: caseItem.evidence.length, label: 'Evidence Items' },
+              { num: VOICE_MEMOS_DATA.length, label: 'Voice Memos' },
+              { num: ACTIVITY_LOGS_DATA.length, label: 'Activity Logs' },
+            ].map((item, i, arr) => (
+              <React.Fragment key={i}>
+                <View style={evStyles.countItem}>
+                  <Text style={evStyles.countNum}>{item.num}</Text>
+                  <Text style={evStyles.countLabel}>{item.label}</Text>
+                </View>
+                {i < arr.length - 1 && <View style={evStyles.countDivider} />}
+              </React.Fragment>
+            ))}
+          </View>
+
+          {/* Tab bar */}
+          <View style={evStyles.tabBar}>
+            {TABS.map(tab => (
+              <TouchableOpacity
+                key={tab.id}
+                style={[evStyles.tab, activeTab === tab.id && evStyles.tabActive]}
+                onPress={() => setActiveTab(tab.id)}
+              >
+                <Text style={evStyles.tabIcon}>{tab.icon}</Text>
+                <Text style={[evStyles.tabLabel, activeTab === tab.id && evStyles.tabLabelActive]}>
+                  {tab.label}
+                </Text>
+                {activeTab === tab.id && <View style={evStyles.tabUnderline} />}
+              </TouchableOpacity>
+            ))}
+          </View>
+
+          {/* Scrollable content */}
+          <ScrollView style={evStyles.body} contentContainerStyle={evStyles.bodyContent} showsVerticalScrollIndicator={false}>
+
+            {/* Activity Logs tab */}
+            {activeTab === 'activity' && (
+              <View>
+                {ACTIVITY_LOGS_DATA.map((e, i) => (
+                  <View key={i} style={evStyles.logRow}>
+                    <Text style={[evStyles.logTime, { color: e.color }]}>{e.time}</Text>
+                    <View style={[evStyles.logDot, { backgroundColor: e.color }]} />
+                    <View style={{ flex: 1 }}>
+                      <Text style={evStyles.logLabel}>{e.label}</Text>
+                      <Text style={evStyles.logDesc}>{e.desc}</Text>
+                    </View>
+                  </View>
+                ))}
+                {caseItem.evidence.length > 0 && (
+                  <>
+                    <View style={evStyles.separator} />
+                    <Text style={evStyles.sectionHead}>CASE EVIDENCE</Text>
+                    {caseItem.evidence.map((ev: any) => (
+                      <View key={ev.id} style={evStyles.logRow}>
+                        <Text style={[evStyles.logTime, { color: Colors.amber }]}>{ev.date?.slice(0, 5) ?? '--:--'}</Text>
+                        <View style={[evStyles.logDot, { backgroundColor: Colors.amber }]} />
+                        <View style={{ flex: 1 }}>
+                          <Text style={evStyles.logLabel}>{ev.title}</Text>
+                          <Text style={evStyles.logDesc}>{ev.description}</Text>
+                        </View>
+                      </View>
+                    ))}
+                  </>
+                )}
+              </View>
+            )}
+
+            {/* Acquisition tab */}
+            {activeTab === 'acquisition' && (
+              <View>
+                <Text style={evStyles.sectionHead}>ACQUISITION PROGRESS</Text>
+                <View style={evStyles.ringsRow}>
+                  {EVIDENCE_ACQUISITION_DATA.map((item, i) => (
+                    <View key={i} style={evStyles.ringWrapper}>
+                      <View style={evStyles.ringOuter}>
+                        <View style={[evStyles.ringTrack, { borderColor: Colors.line }]} />
+                        <View style={[evStyles.ringFill, {
+                          borderColor: item.color,
+                          borderRightColor: item.pct > 50 ? item.color : 'transparent',
+                          borderBottomColor: item.pct > 25 ? item.color : 'transparent',
+                          transform: [{ rotate: `${(item.pct / 100) * 360}deg` }],
+                        }]} />
+                        <View style={evStyles.ringCenter}>
+                          <Text style={[evStyles.ringPct, { color: item.color }]}>{item.pct}%</Text>
+                        </View>
+                      </View>
+                      <Text style={evStyles.ringLabel}>{item.label}</Text>
+                    </View>
+                  ))}
+                </View>
+                <View style={evStyles.separator} />
+                <Text style={evStyles.sectionHead}>EVIDENCE ITEMS ({caseItem.evidence.length})</Text>
+                {caseItem.evidence.length === 0
+                  ? <Text style={evStyles.emptyText}>No evidence recorded yet.</Text>
+                  : caseItem.evidence.map((ev: any) => (
+                    <View key={ev.id} style={evStyles.evidenceRow}>
+                      <View style={[evStyles.evidenceTypeBadge, { backgroundColor: Colors.amberDim }]}>
+                        <Text style={[evStyles.evidenceTypeText, { color: Colors.amber }]}>
+                          {(ev.type ?? 'DOC').toUpperCase()}
+                        </Text>
+                      </View>
+                      <View style={{ flex: 1 }}>
+                        <Text style={evStyles.evidenceTitle}>{ev.title}</Text>
+                        <Text style={evStyles.evidenceDesc}>{ev.description}</Text>
+                      </View>
+                    </View>
+                  ))
+                }
+              </View>
+            )}
+
+            {/* Voice Memos tab */}
+            {activeTab === 'memos' && (
+              <View style={{ gap: 12 }}>
+                <Text style={evStyles.sectionHead}>VOICE MEMOS ({VOICE_MEMOS_DATA.length})</Text>
+                {VOICE_MEMOS_DATA.map((note, i) => (
+                  <View key={i} style={evStyles.memoCard}>
+                    <TouchableOpacity style={evStyles.playBtn}>
+                      <Text style={evStyles.playIcon}>▶</Text>
+                    </TouchableOpacity>
+                    <View style={{ flex: 1 }}>
+                      <Text style={evStyles.memoTitle}>{note.title}</Text>
+                      <View style={evStyles.memoMeta}>
+                        <Text style={evStyles.memoDate}>{note.date}</Text>
+                        <Text style={evStyles.memoDuration}>{note.duration}</Text>
+                      </View>
+                      <View style={evStyles.waveform}>
+                        {Array.from({ length: 28 }).map((_, j) => (
+                          <View key={j} style={[evStyles.waveBar, {
+                            height: 4 + Math.abs(Math.sin(j * 0.9 + i) * 6),
+                            backgroundColor: j < 12 ? Colors.steel : Colors.line,
+                          }]} />
+                        ))}
+                      </View>
+                    </View>
+                  </View>
+                ))}
+              </View>
+            )}
+          </ScrollView>
+        </Animated.View>
+      </View>
+    </Modal>
+  );
+};
+
+const evStyles = StyleSheet.create({
+  // Full-screen container: backdrop + centered panel
+  backdropContainer: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    position: 'relative',
+  },
+  backdrop: {
+    position: 'absolute', top: 0, left: 0, right: 0, bottom: 0,
+    backgroundColor: 'rgba(10,20,40,0.52)',
+  },
+  // Panel — width fixed, centred by flex parent, then offset by drag transform
+  panel: {
+    width: 460,
+    maxHeight: 540,
+    backgroundColor: Colors.card,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: Colors.line,
+    shadowColor: Colors.inkNavy,
+    shadowOffset: { width: 0, height: 14 },
+    shadowOpacity: 0.22,
+    shadowRadius: 30,
+    elevation: 28,
+    overflow: 'hidden',
+    zIndex: 999,
+  },
+  // Header — acts as drag handle
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: Colors.inkNavy,
+    paddingHorizontal: 18,
+    paddingVertical: 14,
+    cursor: 'grab' as any,
+  },
+  headerLeft: { flexDirection: 'row', alignItems: 'center', gap: 12, flex: 1, marginRight: 8 },
+  headerRight: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  iconBadge: { width: 36, height: 36, borderRadius: 8, backgroundColor: 'rgba(255,255,255,0.12)', alignItems: 'center', justifyContent: 'center' },
+  title: { fontFamily: FontFamily.displayBold, fontSize: FontSize.lg, color: Colors.white },
+  subtitle: { fontFamily: FontFamily.mono, fontSize: FontSize.xs, color: Colors.sidebarMuted, marginTop: 1 },
+  dragHintStrip: { flexDirection: 'row', gap: 3, opacity: 0.5 },
+  dragDot: { width: 4, height: 4, borderRadius: 2, backgroundColor: Colors.sidebarMuted },
+  closeBtn: { width: 28, height: 28, borderRadius: 14, backgroundColor: 'rgba(255,255,255,0.12)', alignItems: 'center', justifyContent: 'center' },
+  closeBtnText: { color: Colors.sidebarText, fontSize: 13, fontWeight: '600' },
+  // Count strip
+  countStrip: { flexDirection: 'row', backgroundColor: Colors.paperDim, borderBottomWidth: 1, borderBottomColor: Colors.line, paddingVertical: 10 },
+  countItem: { flex: 1, alignItems: 'center', gap: 2 },
+  countDivider: { width: 1, backgroundColor: Colors.line },
+  countNum: { fontFamily: FontFamily.displayBold, fontSize: FontSize.xl, color: Colors.inkNavy },
+  countLabel: { fontFamily: FontFamily.mono, fontSize: FontSize.xs, color: Colors.gray },
+  // Tab bar
+  tabBar: { flexDirection: 'row', borderBottomWidth: 1, borderBottomColor: Colors.line, backgroundColor: Colors.card },
+  tab: { flex: 1, alignItems: 'center', paddingVertical: 10, gap: 3, position: 'relative' },
+  tabActive: {},
+  tabIcon: { fontSize: 14 },
+  tabLabel: { fontFamily: FontFamily.mono, fontSize: FontSize.xs, color: Colors.gray },
+  tabLabelActive: { color: Colors.inkNavy, fontWeight: '700' },
+  tabUnderline: { position: 'absolute', bottom: 0, left: 12, right: 12, height: 2, backgroundColor: Colors.inkNavy, borderRadius: 1 },
+  // Scrollable body
+  body: { flex: 1 },
+  bodyContent: { padding: 16, paddingBottom: 24 },
+  sectionHead: { fontFamily: FontFamily.mono, fontSize: FontSize.xs, color: Colors.gray, letterSpacing: 1, marginBottom: 12, fontWeight: '700' },
+  separator: { height: 1, backgroundColor: Colors.line, marginVertical: 14 },
+  // Activity log rows
+  logRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 10, marginBottom: 14 },
+  logTime: { fontFamily: FontFamily.mono, fontSize: FontSize.xs, fontWeight: '700', width: 36, paddingTop: 2 },
+  logDot: { width: 7, height: 7, borderRadius: 3.5, marginTop: 4, flexShrink: 0 },
+  logLabel: { fontFamily: FontFamily.bodyMedium, fontSize: FontSize.md, color: Colors.inkNavy },
+  logDesc: { fontFamily: FontFamily.body, fontSize: FontSize.sm, color: Colors.gray, marginTop: 2, lineHeight: 17 },
+  // Acquisition rings
+  ringsRow: { flexDirection: 'row', justifyContent: 'space-around', paddingVertical: 16, backgroundColor: Colors.paper, borderRadius: 10, borderWidth: 1, borderColor: Colors.line, marginBottom: 16 },
+  ringWrapper: { alignItems: 'center', gap: 6 },
+  ringOuter: { width: 54, height: 54, position: 'relative', alignItems: 'center', justifyContent: 'center' },
+  ringTrack: { position: 'absolute', width: 54, height: 54, borderRadius: 27, borderWidth: 5 },
+  ringFill: { position: 'absolute', width: 54, height: 54, borderRadius: 27, borderWidth: 5, borderTopColor: 'transparent', borderLeftColor: 'transparent' },
+  ringCenter: { position: 'absolute', alignItems: 'center', justifyContent: 'center' },
+  ringPct: { fontFamily: FontFamily.monoMedium, fontSize: 10, fontWeight: '700' },
+  ringLabel: { fontFamily: FontFamily.body, fontSize: FontSize.xs, color: Colors.gray, textAlign: 'center' },
+  // Evidence items
+  evidenceRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 10, paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: Colors.line },
+  evidenceTypeBadge: { borderRadius: 4, paddingHorizontal: 7, paddingVertical: 3, alignSelf: 'flex-start' },
+  evidenceTypeText: { fontFamily: FontFamily.mono, fontSize: 9, fontWeight: '700', letterSpacing: 0.5 },
+  evidenceTitle: { fontFamily: FontFamily.bodyMedium, fontSize: FontSize.md, color: Colors.inkNavy },
+  evidenceDesc: { fontFamily: FontFamily.body, fontSize: FontSize.sm, color: Colors.gray, marginTop: 2, lineHeight: 17 },
+  // Voice memo cards
+  memoCard: { flexDirection: 'row', alignItems: 'flex-start', gap: 12, backgroundColor: Colors.paper, borderRadius: 10, borderWidth: 1, borderColor: Colors.line, padding: 12 },
+  playBtn: { width: 36, height: 36, borderRadius: 18, backgroundColor: Colors.inkNavy, alignItems: 'center', justifyContent: 'center', flexShrink: 0, marginTop: 2 },
+  playIcon: { color: Colors.white, fontSize: 12, marginLeft: 2 },
+  memoTitle: { fontFamily: FontFamily.bodyMedium, fontSize: FontSize.md, color: Colors.inkNavy },
+  memoMeta: { flexDirection: 'row', gap: 8, marginTop: 2 },
+  memoDate: { fontFamily: FontFamily.body, fontSize: FontSize.xs, color: Colors.gray },
+  memoDuration: { fontFamily: FontFamily.mono, fontSize: FontSize.xs, color: Colors.steel, fontWeight: '600' },
+  waveform: { flexDirection: 'row', alignItems: 'center', gap: 2, marginTop: 8 },
+  waveBar: { width: 2.5, borderRadius: 2, minHeight: 3 },
+  emptyText: { fontFamily: FontFamily.body, fontSize: FontSize.sm, color: Colors.gray, fontStyle: 'italic' },
+});
+
+
 
 // ─── Popup Styles ─────────────────────────────────────────────────────────────
 const popupStyles = StyleSheet.create({
@@ -1203,6 +1631,43 @@ const styles = StyleSheet.create({
     fontSize: FontSize.base,
     color: Colors.gray,
     lineHeight: 17,
+  },
+
+  // Evidences card
+  evidencesCard: {
+    backgroundColor: Colors.card,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: Colors.amber + '55',
+    marginBottom: 12,
+    overflow: 'hidden',
+  },
+  evidencesCountRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  evidencesBadge: {
+    borderRadius: 20, borderWidth: 1,
+    paddingHorizontal: 8, paddingVertical: 3,
+  },
+  evidencesBadgeText: { fontFamily: FontFamily.mono, fontSize: FontSize.xs, fontWeight: '700' },
+  evidencesArrow: { fontFamily: FontFamily.bodyMedium, fontSize: FontSize.xl, color: Colors.amber },
+  evidencesPreviewRow: {
+    flexDirection: 'row',
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    gap: 16,
+  },
+  evidencesPreviewItem: { flexDirection: 'row', alignItems: 'center', gap: 5 },
+  evidencesPreviewDot: { width: 6, height: 6, borderRadius: 3 },
+  evidencesPreviewLabel: { fontFamily: FontFamily.body, fontSize: FontSize.sm, color: Colors.gray },
+  evidencesPreviewCount: { fontFamily: FontFamily.mono, fontSize: FontSize.sm, fontWeight: '700' },
+  evidencesTapHint: {
+    paddingHorizontal: 14,
+    paddingBottom: 12,
+  },
+  evidencesTapHintText: {
+    fontFamily: FontFamily.mono,
+    fontSize: FontSize.xs,
+    color: Colors.amber,
+    letterSpacing: 0.4,
   },
 
   // Legend card

@@ -1,7 +1,7 @@
-// CrimeSphere AI — CaseCard Component
+﻿// CrimeSphere AI — CaseCard Component
 // Mirrors the "file folder" case card design from the HTML prototype
 import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Pressable } from 'react-native';
+import { View, Text, StyleSheet, Pressable } from 'react-native';
 import { Colors } from '../../constants/colors';
 import { FontFamily, FontSize } from '../../constants/typography';
 import type { Case, Priority } from '../../types';
