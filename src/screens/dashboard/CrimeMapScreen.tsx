@@ -9,6 +9,7 @@ import {
   TextInput,
   TouchableOpacity,
   Animated,
+  Image,
   Platform,
   Dimensions,
 } from 'react-native';
@@ -22,7 +23,6 @@ import Svg, {
   RadialGradient,
   Stop,
   G,
-  Line,
   Polygon,
   Polyline,
 } from 'react-native-svg';
@@ -206,122 +206,257 @@ export const CrimeMapScreen: React.FC = () => {
     setCommsTarget(targetName);
   };
 
-  // ─── Mock Datasets representing the 4 Jurisdiction Levels ────────────────────
+  // ─── Real Bangalore Geographic Data (pixel-calibrated to Bengaluru_map.png 874×1122) ───
+  // All x/y coordinates are pixel positions on the 874×1122 Bengaluru_map.png image.
+  // The SVG overlay uses viewBox="0 0 874 1122" to match the image exactly.
 
-  // 1. BOUNDARIES
+  // 1. BOUNDARIES — Real Bengaluru Police District Zones
   const BOUNDARIES: Record<SimulatedRank, BoundaryRegion[]> = {
+    // Inspector level: Whitefield PS beat sectors — pixel coords on Bengaluru_map.png (874×1122)
     Inspector: [
-      { id: 'sec-1', name: 'Sector 1 (ITPL)', points: '380,250 500,80 720,150 620,290 380,250', fillColor: '#3C4E6E12', borderColor: Colors.steel, labelX: 520, labelY: 170 },
-      { id: 'sec-2', name: 'Sector 2 (Hoodi)', points: '180,220 380,80 380,250 180,220', fillColor: '#B5811A0C', borderColor: Colors.amber, labelX: 280, labelY: 150 },
-      { id: 'sec-3', name: 'Sector 3 (Marathahalli)', points: '180,220 380,250 280,430 140,360 180,220', fillColor: '#B23A2E0A', borderColor: Colors.red, labelX: 250, labelY: 310 },
-      { id: 'sec-4', name: 'Sector 4 (Kadugodi Rd)', points: '380,250 620,290 560,450 280,430 380,250', fillColor: '#3F6B4F0F', borderColor: Colors.green, labelX: 470, labelY: 360 },
+      {
+        id: 'sec-hoodi',
+        name: 'Hoodi Beat',
+        // Hoodi junction area on map
+        points: '590,530 640,490 700,520 680,590 620,600 590,530',
+        fillColor: '#B5811A0C',
+        borderColor: Colors.amber,
+        labelX: 645,
+        labelY: 550,
+      },
+      {
+        id: 'sec-itpl',
+        name: 'ITPL Beat',
+        // ITPL / Whitefield area
+        points: '680,470 760,440 800,520 770,600 700,580 680,470',
+        fillColor: '#3C4E6E12',
+        borderColor: Colors.steel,
+        labelX: 740,
+        labelY: 525,
+      },
+      {
+        id: 'sec-marathahalli',
+        name: 'Marathahalli Beat',
+        // Marathahalli bridge area
+        points: '600,590 680,580 710,670 640,700 580,660 600,590',
+        fillColor: '#B23A2E0A',
+        borderColor: Colors.red,
+        labelX: 650,
+        labelY: 645,
+      },
+      {
+        id: 'sec-varthur',
+        name: 'Varthur Beat',
+        // Varthur lake area
+        points: '700,580 780,550 820,650 770,720 700,690 700,580',
+        fillColor: '#3F6B4F0F',
+        borderColor: Colors.green,
+        labelX: 760,
+        labelY: 640,
+      },
     ],
+    // ACP level: Whitefield Sub-Division circles
     ACP: [
-      { id: 'c-wf', name: 'Whitefield Circle', points: '140,120 450,80 480,280 180,320 140,120', fillColor: '#14213D08', borderColor: Colors.inkNavy, labelX: 290, labelY: 180 },
-      { id: 'c-vt', name: 'Varthur Circle', points: '480,280 720,240 680,450 380,460 480,280', fillColor: '#3F6B4F0C', borderColor: Colors.green, labelX: 560, labelY: 360 },
-      { id: 'c-kg', name: 'Kadugodi Circle', points: '450,80 720,60 720,240 480,280 450,80', fillColor: '#B5811A0C', borderColor: Colors.amber, labelX: 590, labelY: 150 },
-      { id: 'c-mp', name: 'Mahadevapura Circle', points: '80,140 140,120 180,320 60,350 80,140', fillColor: '#B23A2E0A', borderColor: Colors.red, labelX: 110, labelY: 230 },
+      {
+        id: 'c-whitefield',
+        name: 'Whitefield Circle',
+        // Eastern Whitefield sub-division
+        points: '580,460 800,400 840,680 710,720 580,660 580,460',
+        fillColor: '#14213D08',
+        borderColor: Colors.inkNavy,
+        labelX: 710,
+        labelY: 565,
+      },
+      {
+        id: 'c-mahadevapura',
+        name: 'Mahadevapura Circle',
+        // Mahadevapura / Hoodi / Kadugodi
+        points: '490,440 580,420 580,580 490,600 430,530 490,440',
+        fillColor: '#B5811A0C',
+        borderColor: Colors.amber,
+        labelX: 520,
+        labelY: 515,
+      },
+      {
+        id: 'c-krpuram',
+        name: 'KR Puram Circle',
+        // KR Puram railway area
+        points: '540,380 650,350 680,470 590,500 510,460 540,380',
+        fillColor: '#B23A2E0A',
+        borderColor: Colors.red,
+        labelX: 600,
+        labelY: 430,
+      },
+      {
+        id: 'c-hal',
+        name: 'HAL / Old Airport Circle',
+        // HAL / Indiranagar
+        points: '410,490 510,460 520,590 430,620 360,560 410,490',
+        fillColor: '#3F6B4F0C',
+        borderColor: Colors.green,
+        labelX: 460,
+        labelY: 545,
+      },
     ],
+    // DCP level: Bengaluru East Sub-Divisions
     DCP: [
-      { id: 'd-wf', name: 'Whitefield Sub-Division', points: '300,100 680,60 640,420 340,440 300,100', fillColor: '#14213D0C', borderColor: Colors.inkNavy, labelX: 490, labelY: 260 },
-      { id: 'd-kr', name: 'KR Puram Sub-Division', points: '80,60 300,100 340,300 120,320 80,60', fillColor: '#B5811A0A', borderColor: Colors.amber, labelX: 200, labelY: 160 },
-      { id: 'd-hal', name: 'HAL Sub-Division', points: '120,320 340,300 340,440 140,460 120,320', fillColor: '#B23A2E0A', borderColor: Colors.red, labelX: 220, labelY: 380 },
+      {
+        id: 'd-east-subdiv',
+        name: 'East Sub-Division (Whitefield)',
+        points: '530,340 840,300 860,740 700,780 530,700 530,340',
+        fillColor: '#14213D0C',
+        borderColor: Colors.inkNavy,
+        labelX: 700,
+        labelY: 540,
+      },
+      {
+        id: 'd-central-subdiv',
+        name: 'Central Sub-Division (HAL/Indiranagar)',
+        points: '290,390 530,350 530,700 390,740 260,650 290,390',
+        fillColor: '#B5811A0A',
+        borderColor: Colors.amber,
+        labelX: 420,
+        labelY: 540,
+      },
+      {
+        id: 'd-south-subdiv',
+        name: 'South-East Sub-Division (Koramangala)',
+        points: '330,710 600,680 640,900 480,950 290,870 330,710',
+        fillColor: '#B23A2E0A',
+        borderColor: Colors.red,
+        labelX: 470,
+        labelY: 800,
+      },
     ],
+    // Commissioner level: Bengaluru Police District Zones
     Commissioner: [
-      { id: 'z-east', name: 'East District (Bengaluru East)', points: '380,160 700,120 660,420 380,440 380,160', fillColor: '#14213D0E', borderColor: Colors.inkNavy, labelX: 520, labelY: 280 },
-      { id: 'z-west', name: 'West District', points: '80,140 280,160 300,380 60,340 80,140', fillColor: '#3F6B4F0A', borderColor: Colors.green, labelX: 160, labelY: 240 },
-      { id: 'z-south', name: 'South District', points: '280,160 380,160 380,440 280,440 280,160', fillColor: '#B5811A0A', borderColor: Colors.amber, labelX: 330, labelY: 300 },
-      { id: 'z-central', name: 'Central District', points: '280,100 380,100 380,160 280,160 280,100', fillColor: '#B23A2E08', borderColor: Colors.red, labelX: 330, labelY: 130 },
-      { id: 'z-north', name: 'North District', points: '160,40 580,30 380,160 280,160 160,40', fillColor: '#3C4E6E0A', borderColor: Colors.steel, labelX: 340, labelY: 80 },
+      {
+        id: 'z-north',
+        name: 'North District',
+        // North: Yelahanka, Hebbal, Thanisandra
+        points: '160,130 550,80 600,380 440,420 250,400 140,300 160,130',
+        fillColor: '#3C4E6E0A',
+        borderColor: Colors.steel,
+        labelX: 390,
+        labelY: 250,
+      },
+      {
+        id: 'z-east',
+        name: 'East District (Bengaluru East)',
+        // East: Whitefield, KR Puram, Marathahalli
+        points: '530,340 840,300 870,750 660,800 530,720 530,340',
+        fillColor: '#14213D0E',
+        borderColor: Colors.inkNavy,
+        labelX: 700,
+        labelY: 540,
+      },
+      {
+        id: 'z-south',
+        name: 'South District',
+        // South: Koramangala, Jayanagar, Electronic City
+        points: '260,700 640,660 700,1000 500,1060 240,980 260,700',
+        fillColor: '#B23A2E08',
+        borderColor: Colors.red,
+        labelX: 480,
+        labelY: 860,
+      },
+      {
+        id: 'z-west',
+        name: 'West District',
+        // West: Rajajinagar, Yeshwanthpur, Peenya, Kengeri
+        points: '100,300 250,290 300,700 170,780 70,620 100,300',
+        fillColor: '#3F6B4F0A',
+        borderColor: Colors.green,
+        labelX: 185,
+        labelY: 540,
+      },
+      {
+        id: 'z-central',
+        name: 'Central District',
+        // Central: MG Road, Shivajinagar, Cubbon Park, Majestic
+        points: '250,400 530,350 530,700 330,740 240,660 250,400',
+        fillColor: '#B5811A0A',
+        borderColor: Colors.amber,
+        labelX: 390,
+        labelY: 550,
+      },
     ],
   };
 
-  // 2. MAIN ROADS (Grid Overlay)
+  // 2. ROADS — Not drawn: real roads are visible on Bengaluru_map.png background
+  // Kept as empty arrays to satisfy type requirements
   const ROADS: Record<SimulatedRank, MapRoad[]> = {
-    Inspector: [
-      { id: 'r1', points: '100,220 380,250 750,290', width: 3, isHighway: true }, // ITPL Main Road
-      { id: 'r2', points: '280,80 380,250 480,450', width: 2 }, // Hoodi-Varthur Link
-      { id: 'r3', points: '180,350 380,250 680,200', width: 1.5 }, // Outer Ring Connector
-    ],
-    ACP: [
-      { id: 'r1', points: '60,180 380,250 720,300', width: 4, isHighway: true }, // Old Airport Road
-      { id: 'r2', points: '300,50 380,250 420,460', width: 3, isHighway: true }, // Outer Ring Road
-      { id: 'r3', points: '100,110 450,80 700,140', width: 2 }, // Kadugodi Highway
-      { id: 'r4', points: '180,320 480,280 680,420', width: 1.5 }, // Varthur Main Road
-    ],
-    DCP: [
-      { id: 'r1', points: '50,150 400,220 750,280', width: 4, isHighway: true }, // National Highway 75
-      { id: 'r2', points: '250,40 340,300 380,460', width: 4, isHighway: true }, // Outer Ring Road (East)
-      { id: 'r3', points: '80,320 340,300 700,200', width: 3 }, // Old Airport Expressway
-    ],
-    Commissioner: [
-      { id: 'r1', points: '50,250 380,250 750,250', width: 5, isHighway: true }, // East-West Expressway
-      { id: 'r2', points: '380,50 380,250 380,450', width: 5, isHighway: true }, // North-South Corridor
-      { id: 'r3', points: '100,100 380,250 680,400', width: 3 }, // Diagonal Ring Link
-    ],
+    Inspector: [],
+    ACP: [],
+    DCP: [],
+    Commissioner: [],
   };
 
-  // 3. HOTSPOTS (Colored Radial Gradients)
+  // 3. HOTSPOTS — Real Bangalore Crime Hotspot Locations (pixel coords on 874×1122 map)
   const HOTSPOTS: Record<SimulatedRank, CrimeHotspot[]> = {
     Inspector: [
       {
-        id: 'h1',
+        id: 'h-hoodi',
         name: 'Hoodi Circle Junction',
         severity: 'red',
-        x: 300,
-        y: 180,
-        radius: 48,
+        // Hoodi Circle on map image
+        x: 628,
+        y: 554,
+        radius: 42,
         firCount: 4,
         crimeTypes: 'Snatching (75%), Vehicle Theft (25%)',
         riskLevel: 'Critical Risk Level (High)',
         recentIncidents: [
-          'FIR KA-CR-1142: Gold chain snatched near bus stop (2h ago)',
+          'FIR KA-CR-1142: Gold chain snatched near Hoodi bus stop (2h ago)',
           'FIR KA-CR-1098: Snatching near Hoodi Lake gate (1d ago)',
-          'Compl-104: Two-wheeler theft outside hotel (2d ago)',
+          'Compl-104: Two-wheeler theft outside Hoodi hotel (2d ago)',
         ],
         nearbyPatrols: ['PCR-14 (120m away) - On Patrol', 'PCR-09 (450m away) - Responding'],
       },
       {
-        id: 'h2',
-        name: 'ITPL Main Parking Lot B2',
+        id: 'h-itpl',
+        name: 'ITPL Main Road Parking Zone',
         severity: 'amber',
-        x: 460,
-        y: 120,
+        // ITPL area on map image
+        x: 735,
+        y: 498,
         radius: 36,
         firCount: 2,
         crimeTypes: 'Vehicle Theft (100%)',
         riskLevel: 'Moderate Warning (Medium)',
         recentIncidents: [
-          'FIR KA-CR-1149: Pulsar motorcycle stolen from B2 basement (1d ago)',
+          'FIR KA-CR-1149: Pulsar motorcycle stolen from ITPL basement (1d ago)',
           'Compl-189: Bicycle theft from campus cycle dock (4d ago)',
         ],
         nearbyPatrols: ['PCR-09 (180m away) - Responding'],
       },
       {
-        id: 'h3',
-        name: 'Marathahalli Flyover Bridge',
+        id: 'h-marathahalli',
+        name: 'Marathahalli Bridge Junction',
         severity: 'amber',
-        x: 250,
-        y: 340,
-        radius: 32,
+        // Marathahalli on map image
+        x: 648,
+        y: 638,
+        radius: 34,
         firCount: 3,
         crimeTypes: 'Assault (66%), Snatching (34%)',
         riskLevel: 'Moderate Warning (Medium)',
         recentIncidents: [
-          'FIR KA-CR-1076: Pedestrian assaulted on ramp (3d ago)',
-          'FIR KA-CR-1138: Neighborhood brawl near bridge (5d ago)',
+          'FIR KA-CR-1076: Pedestrian assaulted on Marathahalli flyover ramp (3d ago)',
+          'FIR KA-CR-1138: Brawl near Marathahalli bridge (5d ago)',
         ],
         nearbyPatrols: ['PCR-03 (90m away) - Available'],
       },
     ],
     ACP: [
       {
-        id: 'h-wf',
-        name: 'Whitefield Central Cluster',
+        id: 'h-whitefield-cluster',
+        name: 'Whitefield Central (EPIP Zone)',
         severity: 'red',
-        x: 330,
-        y: 200,
-        radius: 54,
+        // Whitefield on map image
+        x: 746,
+        y: 556,
+        radius: 52,
         firCount: 9,
         crimeTypes: 'Chain Snatching (50%), Cyber Fraud (30%), Assault (20%)',
         riskLevel: 'Critical Risk Level (High)',
@@ -332,266 +467,252 @@ export const CrimeMapScreen: React.FC = () => {
         nearbyPatrols: ['PCR-14 - On Patrol', 'PCR-09 - Responding'],
       },
       {
-        id: 'h-mp',
-        name: 'Mahadevapura IT Hub Zone',
+        id: 'h-mahadevapura',
+        name: 'Mahadevapura IT Hub',
         severity: 'red',
-        x: 130,
-        y: 230,
-        radius: 46,
+        // Mahadevapura on map image
+        x: 580,
+        y: 510,
+        radius: 45,
         firCount: 7,
         crimeTypes: 'Cyber Fraud (80%), Extortion (20%)',
         riskLevel: 'Critical Risk Level (High)',
         recentIncidents: [
-          'Cyber Complaint: Fake call center hub busted (1d ago)',
-          'Extortion: Merchant threatened by local gang (3d ago)',
+          'Cyber Complaint: Fake call center hub busted near Mahadevapura (1d ago)',
+          'Extortion: IT merchant threatened by local gang (3d ago)',
         ],
         nearbyPatrols: ['PCR-05 - Available'],
       },
       {
-        id: 'h-vt',
-        name: 'Varthur Lake Border Area',
+        id: 'h-varthur-lake',
+        name: 'Varthur Lake Area',
         severity: 'amber',
-        x: 580,
-        y: 380,
+        // Varthur lake on map image
+        x: 770,
+        y: 654,
         radius: 38,
         firCount: 4,
         crimeTypes: 'Illegal Dumping (60%), Vehicle Theft (40%)',
         riskLevel: 'Moderate Warning (Medium)',
-        recentIncidents: ['Enviro-Alert: Chemical truck dumping in lake (4h ago)'],
+        recentIncidents: ['Enviro-Alert: Chemical truck dumping in Varthur Lake (4h ago)'],
         nearbyPatrols: ['PCR-21 - On Patrol'],
       },
     ],
     DCP: [
       {
-        id: 'h-dist-wf',
-        name: 'Whitefield Tech Corridor Hotspot',
+        id: 'h-whitefield-dist',
+        name: 'Whitefield Tech Corridor',
         severity: 'red',
-        x: 480,
-        y: 260,
-        radius: 64,
+        // Whitefield corridor on map image
+        x: 740,
+        y: 570,
+        radius: 62,
         firCount: 18,
         crimeTypes: 'Property Crime (45%), Cyber Crime (40%), Bodily Harm (15%)',
         riskLevel: 'Critical Risk Level (High)',
-        recentIncidents: ['High volume of tech corridor property crimes reported.'],
+        recentIncidents: ['High volume of tech corridor property crimes in Whitefield–ITPL stretch.'],
         nearbyPatrols: ['6 active PCR units in vicinity'],
       },
       {
-        id: 'h-dist-kr',
-        name: 'KR Puram Junction Transit Hotspot',
+        id: 'h-krpuram',
+        name: 'KR Puram Railway Junction',
         severity: 'red',
-        x: 220,
-        y: 150,
-        radius: 50,
+        // KR Puram on map image
+        x: 598,
+        y: 460,
+        radius: 48,
         firCount: 14,
         crimeTypes: 'Pickpocketing (60%), Luggage Theft (40%)',
         riskLevel: 'Critical Risk Level (High)',
-        recentIncidents: ['Active gangs flagged around railway/bus stations.'],
+        recentIncidents: ['Active gangs flagged around KR Puram railway/bus stations.'],
         nearbyPatrols: ['4 active PCR units in vicinity'],
+      },
+      {
+        id: 'h-indiranagar',
+        name: 'Indiranagar 100 Feet Road',
+        severity: 'amber',
+        // Indiranagar on map image
+        x: 518,
+        y: 582,
+        radius: 36,
+        firCount: 8,
+        crimeTypes: 'Drunk Driving (50%), Snatching (30%), Assault (20%)',
+        riskLevel: 'Moderate Warning (Medium)',
+        recentIncidents: ['Weekend night incidents rising near Indiranagar pubs.'],
+        nearbyPatrols: ['PCR-11 - On Patrol'],
       },
     ],
     Commissioner: [
       {
-        id: 'h-city-east',
-        name: 'East Zone Crime Cluster (Aggregated)',
+        id: 'h-east-zone',
+        name: 'East Zone — Whitefield/Marathahalli Cluster',
         severity: 'red',
-        x: 540,
-        y: 280,
+        // East zone on map image
+        x: 700,
+        y: 590,
         radius: 80,
         firCount: 36,
         crimeTypes: 'Cyber Fraud (40%), Snatching (30%), Burglary (30%)',
         riskLevel: 'Critical Risk Level (High)',
-        recentIncidents: ['City-wide cyber center coordinates identified in East District.'],
-        nearbyPatrols: ['18 patrol vehicles active in Zone'],
+        recentIncidents: ['City-wide cyber fraud center coordinates identified in East District (Whitefield area).'],
+        nearbyPatrols: ['18 patrol vehicles active in East Zone'],
       },
       {
-        id: 'h-city-central',
-        name: 'Central Business District',
-        severity: 'amber',
-        x: 330,
-        y: 140,
+        id: 'h-south-zone',
+        name: 'South Zone — Koramangala/BTM Layout',
+        severity: 'red',
+        // Koramangala on map image
+        x: 512,
+        y: 742,
         radius: 60,
+        firCount: 28,
+        crimeTypes: 'Robbery (35%), Drug Offences (30%), Vehicle Theft (35%)',
+        riskLevel: 'Critical Risk Level (High)',
+        recentIncidents: ['Coordinated robbery spree in Koramangala-BTM Layout belt.'],
+        nearbyPatrols: ['14 patrol vehicles active in South Zone'],
+      },
+      {
+        id: 'h-central',
+        name: 'Central — MG Road / Shivajinagar',
+        severity: 'amber',
+        // MG Road on map image
+        x: 470,
+        y: 624,
+        radius: 55,
         firCount: 22,
         crimeTypes: 'Traffic Altercations (50%), Snatching (50%)',
         riskLevel: 'Moderate Warning (Medium)',
-        recentIncidents: ['Peak hour traffic incidents leading to physical altercations.'],
-        nearbyPatrols: ['12 patrol vehicles active in Zone'],
+        recentIncidents: ['Peak hour traffic incidents & pickpocketing near MG Road metro.'],
+        nearbyPatrols: ['12 patrol vehicles active in Central Zone'],
       },
     ],
   };
 
-  // 4. MAP ASSETS (Markers)
+  // 4. MAP ASSETS — Real Bangalore Police Stations (pixel coords on 874×1122 Bengaluru_map.png)
   const ASSETS: Record<SimulatedRank, MapAsset[]> = {
     Inspector: [
-      { id: 'ps-wf', type: 'station', label: 'Whitefield PS', x: 380, y: 250, details: { name: 'Whitefield Police Station', inCharge: 'Insp. R. Kumaraswamy', staff: '32 Personnel', phone: '+91-80-2845-0001' } },
-      { id: 'chk-hoodi', type: 'checkpoint', label: 'Hoodi Checkpoint', x: 290, y: 140, status: 'Active Search', details: { name: 'Hoodi Circle Checkpoint', dutyOfficer: 'HC Prakash', status: 'Active Barricading', vehiclesScreened: 142 } },
-      { id: 'chk-itpl', type: 'checkpoint', label: 'ITPL Gate Checkpoint', x: 470, y: 100, status: 'Manned', details: { name: 'ITPL North Gate Point', dutyOfficer: 'PC Gowda', status: 'Routine Watch', vehiclesScreened: 89 } },
-      { id: 'cctv-101', type: 'cctv', label: 'CCTV-101 (Hoodi Jn)', x: 310, y: 160, status: 'Online', details: { id: 'CCTV-101', area: 'Hoodi Jn West', status: 'Online', resolution: '4K Dome', rotation: 'Panning' } },
-      { id: 'cctv-102', type: 'cctv', label: 'CCTV-102 (ITPL Entry)', x: 460, y: 130, status: 'Online', details: { id: 'CCTV-102', area: 'ITPL Tech Park Entry', status: 'Online', resolution: '1080p Dome', rotation: 'Static North' } },
-      { id: 'cctv-103', type: 'cctv', label: 'CCTV-103 (Flyover Ramp)', x: 240, y: 350, status: 'Online', details: { id: 'CCTV-103', area: 'Marathahalli Flyover East', status: 'Online', resolution: '4K Traffic Cam', rotation: 'Panning' } },
-      { id: 'inc-1', type: 'incident', label: 'Chain snatching (Just now)', x: 320, y: 190, severity: 'red', details: { title: 'Red Alert: Chain Snatching', reporter: 'Lakshmi N.', time: '2 mins ago', details: 'Two suspects on a black Pulsar snatched gold chain. Fled towards Hoodi Junction.' } },
-      { id: 'inc-2', type: 'incident', label: 'Vehicle Theft Reported', x: 450, y: 110, severity: 'amber', details: { title: 'Amber Alert: Vehicle Theft', reporter: 'R. Fernandes', time: '11 mins ago', details: 'Motorcycle stolen from basement parking. Guard reported black helmet rider.' } },
-      { id: 'fir-1142', type: 'fir', label: 'FIR 1142', x: 280, y: 180, details: { firNo: 'KA-CR-1142', title: 'Chain snatching — Hoodi Circle', date: '07 Jul 2026', officer: 'SI Manjunath', complainant: 'Lakshmi N.' } },
-      { id: 'fir-1149', type: 'fir', label: 'FIR 1149', x: 480, y: 140, details: { firNo: 'KA-CR-1149', title: 'Vehicle theft — ITPL Parking', date: '05 Jul 2026', officer: 'HC Prakash', complainant: 'R. Fernandes' } },
+      // Whitefield PS (near Whitefield on map)
+      { id: 'ps-wf', type: 'station', label: 'Whitefield PS', x: 710, y: 578,
+        details: { name: 'Whitefield Police Station', inCharge: 'Insp. R. Kumaraswamy', staff: '32 Personnel', phone: '+91-80-2845-0001' } },
+      // Hoodi checkpoint
+      { id: 'chk-hoodi', type: 'checkpoint', label: 'Hoodi Chk', x: 612, y: 538,
+        status: 'Active Search', details: { name: 'Hoodi Circle Checkpoint', dutyOfficer: 'HC Prakash', status: 'Active Barricading', vehiclesScreened: 142 } },
+      // ITPL Gate
+      { id: 'chk-itpl', type: 'checkpoint', label: 'ITPL Gate', x: 748, y: 480,
+        status: 'Manned', details: { name: 'ITPL North Gate Point', dutyOfficer: 'PC Gowda', status: 'Routine Watch', vehiclesScreened: 89 } },
+      // CCTVs
+      { id: 'cctv-101', type: 'cctv', label: 'CCTV-101', x: 625, y: 565,
+        status: 'Online', details: { id: 'CCTV-101', area: 'Hoodi Junction West', status: 'Online', resolution: '4K Dome', rotation: 'Panning' } },
+      { id: 'cctv-102', type: 'cctv', label: 'CCTV-102', x: 748, y: 495,
+        status: 'Online', details: { id: 'CCTV-102', area: 'ITPL Tech Park Entry Gate', status: 'Online', resolution: '1080p Dome', rotation: 'Static North' } },
+      { id: 'cctv-103', type: 'cctv', label: 'CCTV-103', x: 645, y: 650,
+        status: 'Online', details: { id: 'CCTV-103', area: 'Marathahalli Flyover East', status: 'Online', resolution: '4K Traffic Cam', rotation: 'Panning' } },
+      // Incidents
+      { id: 'inc-1', type: 'incident', label: 'Chain Snatching', x: 620, y: 548, severity: 'red',
+        details: { title: 'Red Alert: Chain Snatching', reporter: 'Lakshmi N.', time: '2 mins ago', details: 'Two suspects on a black Pulsar snatched gold chain near Hoodi Bus Stop. Fled towards Hoodi Junction.' } },
+      { id: 'inc-2', type: 'incident', label: 'Vehicle Theft', x: 742, y: 490, severity: 'amber',
+        details: { title: 'Amber Alert: Vehicle Theft', reporter: 'R. Fernandes', time: '11 mins ago', details: 'Motorcycle stolen from ITPL basement parking. Guard reported black helmet rider.' } },
+      // FIRs
+      { id: 'fir-1142', type: 'fir', label: 'FIR 1142', x: 608, y: 560,
+        details: { firNo: 'KA-CR-1142', title: 'Chain snatching — Hoodi Circle', date: '07 Jul 2026', officer: 'SI Manjunath', complainant: 'Lakshmi N.' } },
+      { id: 'fir-1149', type: 'fir', label: 'FIR 1149', x: 740, y: 505,
+        details: { firNo: 'KA-CR-1149', title: 'Vehicle theft — ITPL Parking', date: '05 Jul 2026', officer: 'HC Prakash', complainant: 'R. Fernandes' } },
+      // Patrol units
       {
-        id: 'PCR-14',
-        type: 'patrol',
-        label: 'PCR-14',
-        x: 280,
-        y: 220,
-        status: 'On Patrol',
+        id: 'PCR-14', type: 'patrol', label: 'PCR-14', x: 618, y: 552, status: 'On Patrol',
         details: {
-          patrolId: 'PCR-14',
-          vehicleNo: 'KA-03-GP-1204',
-          dutyOfficer: 'Sub-Inspector Manjunath',
-          assignedCrew: 'HC Prakash, PC Gowda',
-          status: 'On Patrol',
-          shift: '08:00 - 20:00 (Day Shift)',
-          lastUpdated: '1 min ago (GPS Lock)',
-          area: 'Sector 2 (Hoodi)',
-          phone: '+91-98450-12345',
-          route: '280,220 300,180 320,190 290,140 280,220',
+          patrolId: 'PCR-14', vehicleNo: 'KA-03-GP-1204', dutyOfficer: 'Sub-Inspector Manjunath',
+          assignedCrew: 'HC Prakash, PC Gowda', status: 'On Patrol', shift: '08:00 - 20:00 (Day Shift)',
+          lastUpdated: '1 min ago (GPS Lock)', area: 'Hoodi–Whitefield Beat',
+          phone: '+91-98450-12345', route: '618,552 628,565 612,540 618,552',
         },
       },
       {
-        id: 'PCR-09',
-        type: 'patrol',
-        label: 'PCR-09',
-        x: 440,
-        y: 150,
-        status: 'Responding',
+        id: 'PCR-09', type: 'patrol', label: 'PCR-09', x: 738, y: 488, status: 'Responding',
         details: {
-          patrolId: 'PCR-09',
-          vehicleNo: 'KA-03-GP-5512',
-          dutyOfficer: 'SI Deepa R.',
-          assignedCrew: 'HC Mahesh, PC Harish',
-          status: 'Responding',
-          shift: '08:00 - 20:00 (Day Shift)',
-          lastUpdated: 'Just now (Active Siren)',
-          area: 'Sector 1 (ITPL)',
-          phone: '+91-98450-55122',
-          route: '440,150 460,130 450,110 440,150',
+          patrolId: 'PCR-09', vehicleNo: 'KA-03-GP-5512', dutyOfficer: 'SI Deepa R.',
+          assignedCrew: 'HC Mahesh, PC Harish', status: 'Responding', shift: '08:00 - 20:00 (Day Shift)',
+          lastUpdated: 'Just now (Active Siren)', area: 'ITPL–Kadugodi Beat',
+          phone: '+91-98450-55122', route: '738,488 748,498 735,498 738,488',
         },
       },
       {
-        id: 'PCR-03',
-        type: 'patrol',
-        label: 'PCR-03',
-        x: 230,
-        y: 320,
-        status: 'Available',
+        id: 'PCR-03', type: 'patrol', label: 'PCR-03', x: 640, y: 648, status: 'Available',
         details: {
-          patrolId: 'PCR-03',
-          vehicleNo: 'KA-03-GP-9833',
-          dutyOfficer: 'HC Nagaraj',
-          assignedCrew: 'PC Anand, PC Somesh',
-          status: 'Available',
-          shift: '08:00 - 20:00 (Day Shift)',
-          lastUpdated: '4 mins ago (Stationary)',
-          area: 'Sector 3 (Marathahalli)',
-          phone: '+91-98450-98334',
-          route: '230,320 240,350 250,340 230,320',
+          patrolId: 'PCR-03', vehicleNo: 'KA-03-GP-9833', dutyOfficer: 'HC Nagaraj',
+          assignedCrew: 'PC Anand, PC Somesh', status: 'Available', shift: '08:00 - 20:00 (Day Shift)',
+          lastUpdated: '4 mins ago (Stationary)', area: 'Marathahalli Beat',
+          phone: '+91-98450-98334', route: '640,648 648,638 635,650 640,648',
         },
       },
     ],
     ACP: [
-      { id: 'ps-wf', type: 'station', label: 'Whitefield PS', x: 380, y: 250 },
-      { id: 'ps-vt', type: 'station', label: 'Varthur PS', x: 550, y: 360 },
-      { id: 'ps-kg', type: 'station', label: 'Kadugodi PS', x: 600, y: 130 },
-      { id: 'ps-mp', type: 'station', label: 'Mahadevapura PS', x: 160, y: 210 },
-      { id: 'chk-east', type: 'checkpoint', label: 'East Sub-Div Border Chk', x: 680, y: 220, status: 'Active Guarding' },
-      { id: 'inc-acp-1', type: 'incident', label: 'Cyber Syndicate Flagged', x: 140, y: 220, severity: 'red' },
+      { id: 'ps-wf', type: 'station', label: 'Whitefield PS', x: 710, y: 578 },
+      { id: 'ps-varthur', type: 'station', label: 'Varthur PS', x: 778, y: 664 },
+      { id: 'ps-kadugodi', type: 'station', label: 'Kadugodi PS', x: 748, y: 460 },
+      { id: 'ps-mahadevapura', type: 'station', label: 'Mahadevapura PS', x: 574, y: 516 },
+      { id: 'ps-krpuram', type: 'station', label: 'KR Puram PS', x: 600, y: 460 },
+      { id: 'chk-east', type: 'checkpoint', label: 'Varthur Border Chk', x: 820, y: 660, status: 'Active Guarding' },
+      { id: 'inc-acp-1', type: 'incident', label: 'Cyber Syndicate Flagged', x: 574, y: 510, severity: 'red' },
       {
-        id: 'PCR-14',
-        type: 'patrol',
-        label: 'PCR-14',
-        x: 350,
-        y: 230,
-        status: 'On Patrol',
+        id: 'PCR-14', type: 'patrol', label: 'PCR-14', x: 640, y: 545, status: 'On Patrol',
         details: {
-          patrolId: 'PCR-14',
-          vehicleNo: 'KA-03-GP-1204',
-          dutyOfficer: 'Sub-Inspector Manjunath',
-          assignedCrew: 'HC Prakash, PC Gowda',
-          status: 'On Patrol',
-          shift: '08:00 - 20:00 (Day Shift)',
-          lastUpdated: '1 min ago (GPS Lock)',
-          area: 'Whitefield Circle',
-          phone: '+91-98450-12345',
-          route: '350,230 380,250 480,280 350,230',
+          patrolId: 'PCR-14', vehicleNo: 'KA-03-GP-1204', dutyOfficer: 'Sub-Inspector Manjunath',
+          assignedCrew: 'HC Prakash, PC Gowda', status: 'On Patrol', shift: '08:00 - 20:00 (Day Shift)',
+          lastUpdated: '1 min ago (GPS Lock)', area: 'Whitefield Circle', phone: '+91-98450-12345',
+          route: '640,545 710,578 748,460 640,545',
         },
       },
       {
-        id: 'PCR-21',
-        type: 'patrol',
-        label: 'PCR-21',
-        x: 520,
-        y: 340,
-        status: 'On Patrol',
+        id: 'PCR-21', type: 'patrol', label: 'PCR-21', x: 772, y: 660, status: 'On Patrol',
         details: {
-          patrolId: 'PCR-21',
-          vehicleNo: 'KA-03-GP-7721',
-          dutyOfficer: 'SI Shivakumar',
-          assignedCrew: 'HC Swamy, PC Venkatesh',
-          status: 'On Patrol',
-          shift: '20:00 - 08:00 (Night Shift)',
-          lastUpdated: '2 mins ago (GPS Lock)',
-          area: 'Varthur Circle',
-          phone: '+91-98450-77211',
-          route: '520,340 550,360 580,380 520,340',
+          patrolId: 'PCR-21', vehicleNo: 'KA-03-GP-7721', dutyOfficer: 'SI Shivakumar',
+          assignedCrew: 'HC Swamy, PC Venkatesh', status: 'On Patrol', shift: '20:00 - 08:00 (Night Shift)',
+          lastUpdated: '2 mins ago (GPS Lock)', area: 'Varthur Circle', phone: '+91-98450-77211',
+          route: '772,660 778,664 766,664 772,660',
         },
       },
     ],
     DCP: [
-      { id: 'hq-wf', type: 'station', label: 'Whitefield ACP Office', x: 480, y: 250 },
-      { id: 'hq-kr', type: 'station', label: 'KR Puram ACP Office', x: 220, y: 160 },
-      { id: 'hq-hal', type: 'station', label: 'HAL ACP Office', x: 220, y: 380 },
-      { id: 'chk-dist-1', type: 'checkpoint', label: 'District Toll Chk', x: 610, y: 380, status: 'Active Guarding' },
-      { id: 'inc-dcp-1', type: 'incident', label: 'Critical Protest Blockade', x: 450, y: 220, severity: 'red' },
+      { id: 'hq-wf-acp', type: 'station', label: 'Whitefield ACP Office', x: 710, y: 578 },
+      { id: 'hq-krpuram-acp', type: 'station', label: 'KR Puram ACP Office', x: 600, y: 460 },
+      { id: 'hq-hal-acp', type: 'station', label: 'HAL/Indiranagar ACP', x: 510, y: 580 },
+      { id: 'hq-koramangala', type: 'station', label: 'Koramangala ACP', x: 500, y: 740 },
+      { id: 'chk-hosur-toll', type: 'checkpoint', label: 'Hosur Toll Gate', x: 580, y: 920, status: 'Active Guarding' },
+      { id: 'inc-dcp-1', type: 'incident', label: 'Critical Protest Blockade', x: 600, y: 455, severity: 'red' },
       {
-        id: 'PCR-COORD-1',
-        type: 'patrol',
-        label: 'PCR-EAST-1',
-        x: 440,
-        y: 280,
-        status: 'Responding',
+        id: 'PCR-EAST-1', type: 'patrol', label: 'PCR-EAST-1', x: 660, y: 562, status: 'Responding',
         details: {
-          patrolId: 'PCR-EAST-1',
-          vehicleNo: 'KA-03-GP-0001',
-          dutyOfficer: 'Inspector R. Kumaraswamy',
-          assignedCrew: 'HC Somanna, PC Swamy',
-          status: 'Responding',
-          shift: '24 hrs (Command Coord)',
-          lastUpdated: 'Just now (Coord Siren)',
-          area: 'Whitefield Division Coordinator',
-          phone: '+91-80-2845-0001',
-          route: '440,280 480,250 450,220 440,280',
+          patrolId: 'PCR-EAST-1', vehicleNo: 'KA-03-GP-0001', dutyOfficer: 'Inspector R. Kumaraswamy',
+          assignedCrew: 'HC Somanna, PC Swamy', status: 'Responding', shift: '24 hrs (Command Coord)',
+          lastUpdated: 'Just now (Coord Siren)', area: 'Whitefield–KR Puram Corridor',
+          phone: '+91-80-2845-0001', route: '660,562 710,578 600,460 660,562',
         },
       },
     ],
     Commissioner: [
-      { id: 'hq-city', type: 'station', label: 'Commissioner HQ', x: 340, y: 140 },
-      { id: 'hq-east-dist', type: 'station', label: 'East District HQ', x: 500, y: 260 },
-      { id: 'hq-west-dist', type: 'station', label: 'West District HQ', x: 180, y: 240 },
-      { id: 'chk-city-border', type: 'checkpoint', label: 'Hosur Toll Gate Point', x: 480, y: 410, status: 'Active Search' },
-      { id: 'inc-city-1', type: 'incident', label: 'City-wide Cyber Spike', x: 510, y: 290, severity: 'red' },
+      // Commissioner's HQ — Cubbon Park / MG Road
+      { id: 'hq-commissioner', type: 'station', label: "Commissioner's HQ", x: 466, y: 620 },
+      // East District HQ — Whitefield area
+      { id: 'hq-east', type: 'station', label: 'East District HQ', x: 700, y: 580 },
+      // West District HQ — Rajajinagar
+      { id: 'hq-west', type: 'station', label: 'West District HQ', x: 270, y: 588 },
+      // South District HQ — Jayanagar
+      { id: 'hq-south', type: 'station', label: 'South District HQ', x: 432, y: 756 },
+      // North District HQ — Yelahanka
+      { id: 'hq-north', type: 'station', label: 'North District HQ', x: 396, y: 280 },
+      // Checkpoints
+      { id: 'chk-hosur', type: 'checkpoint', label: 'Hosur Toll Gate', x: 584, y: 928, status: 'Active Search' },
+      { id: 'chk-tumkur', type: 'checkpoint', label: 'Tumkur Road Naka', x: 204, y: 398, status: 'Manned' },
+      // City-wide incident
+      { id: 'inc-city-1', type: 'incident', label: 'City-wide Cyber Spike', x: 700, y: 578, severity: 'red' },
       {
-        id: 'VAJRA-01',
-        type: 'patrol',
-        label: 'VAJRA-01',
-        x: 360,
-        y: 200,
-        status: 'Available',
+        id: 'VAJRA-01', type: 'patrol', label: 'VAJRA-01', x: 466, y: 630, status: 'Available',
         details: {
-          patrolId: 'VAJRA-01',
-          vehicleNo: 'KA-03-MP-9999',
-          dutyOfficer: 'ACP Command Liaison',
-          assignedCrew: '5 SWAT Personnel',
-          status: 'Available',
-          shift: 'Emergency Command Duty',
-          lastUpdated: '5 mins ago (GPS Active)',
-          area: 'Zonal Command Center',
-          phone: '+91-99999-88888',
-          route: '360,200 380,160 340,140 360,200',
+          patrolId: 'VAJRA-01', vehicleNo: 'KA-03-MP-9999', dutyOfficer: 'ACP Command Liaison',
+          assignedCrew: '5 SWAT Personnel', status: 'Available', shift: 'Emergency Command Duty',
+          lastUpdated: '5 mins ago (GPS Active)', area: 'Central Command — Cubbon Park HQ',
+          phone: '+91-99999-88888', route: '466,630 470,620 462,620 466,630',
         },
       },
     ],
@@ -682,15 +803,15 @@ export const CrimeMapScreen: React.FC = () => {
         </View>
       </View>
 
-      {/* ── Main Container ────────────────────────────────────────────────────── */}
-      <ScrollView
-        style={styles.scroll}
-        contentContainerStyle={styles.mainLayout}
-        showsVerticalScrollIndicator={false}
-      >
+      {/* ── Main Container ─────────────────────────────────────────────────────── */}
+      <View style={styles.mainContainer}>
         <View style={styles.dashboardGrid}>
-          {/* ── Left Sidebar: Stats & Layer Controls ─────────────────────────── */}
-          <View style={styles.sidebarPanel}>
+          {/* ── Left Sidebar: Stats & Layer Controls (its own scroll) ───────── */}
+          <ScrollView
+            style={styles.sidebarPanel}
+            showsVerticalScrollIndicator={false}
+            contentContainerStyle={styles.sidebarContent}
+          >
             {/* Stats Card */}
             <View style={styles.statsCard}>
               <Text style={styles.sidebarSectionTitle}>
@@ -747,7 +868,7 @@ export const CrimeMapScreen: React.FC = () => {
                 ))}
               </View>
             </View>
-          </View>
+          </ScrollView>
 
           {/* ── Main Map Canvas Panel ────────────────────────────────────────── */}
           <View style={styles.mapContainer}>
@@ -761,533 +882,476 @@ export const CrimeMapScreen: React.FC = () => {
               <Text style={styles.mapHintText}>Tap any marker for detailed telemetry and operations</Text>
             </View>
 
-            {/* SVG Render Container */}
+            {/* Map Canvas — Bengaluru_map.png with scrollable SVG overlay */}
             <View style={styles.canvasFrame}>
-              <Svg viewBox="0 0 800 500" style={styles.svgMap}>
-                {/* Defs block for heatmap gradients */}
-                <Defs>
-                  <RadialGradient id="redHeat" cx="50%" cy="50%" r="50%">
-                    <Stop offset="0%" stopColor={Colors.red} stopOpacity="0.55" />
-                    <Stop offset="45%" stopColor={Colors.red} stopOpacity="0.25" />
-                    <Stop offset="100%" stopColor={Colors.red} stopOpacity="0" />
-                  </RadialGradient>
-                  <RadialGradient id="amberHeat" cx="50%" cy="50%" r="50%">
-                    <Stop offset="0%" stopColor={Colors.amber} stopOpacity="0.55" />
-                    <Stop offset="45%" stopColor={Colors.amber} stopOpacity="0.22" />
-                    <Stop offset="100%" stopColor={Colors.amber} stopOpacity="0" />
-                  </RadialGradient>
-                  <RadialGradient id="greenHeat" cx="50%" cy="50%" r="50%">
-                    <Stop offset="0%" stopColor={Colors.green} stopOpacity="0.5" />
-                    <Stop offset="45%" stopColor={Colors.green} stopOpacity="0.2" />
-                    <Stop offset="100%" stopColor={Colors.green} stopOpacity="0" />
-                  </RadialGradient>
-                </Defs>
-
-                {/* Radar Grid Line Overlay */}
-                {Array.from({ length: 9 }).map((_, i) => (
-                  <Line
-                    key={`h-${i}`}
-                    x1="0"
-                    y1={String((i + 1) * 50)}
-                    x2="800"
-                    y2={String((i + 1) * 50)}
-                    stroke={Colors.mapGrid}
-                    strokeWidth="0.5"
-                    strokeOpacity="0.3"
+              {/* Scrollable map area — nestedScrollEnabled for Android */}
+              <ScrollView
+                style={styles.mapScrollView}
+                contentContainerStyle={styles.mapScrollContent}
+                showsVerticalScrollIndicator={true}
+                showsHorizontalScrollIndicator={false}
+                nestedScrollEnabled={true}
+                bounces={false}
+              >
+                {/* Real Bengaluru map image — rendered at natural aspect ratio */}
+                <View style={styles.mapImageWrapper}>
+                  <Image
+                    source={require('../../../Bengaluru_map.png')}
+                    style={styles.mapBaseImage}
+                    resizeMode="stretch"
                   />
-                ))}
-                {Array.from({ length: 15 }).map((_, i) => (
-                  <Line
-                    key={`v-${i}`}
-                    x1={String((i + 1) * 50)}
-                    y1="0"
-                    x2={String((i + 1) * 50)}
-                    y2="500"
-                    stroke={Colors.mapGrid}
-                    strokeWidth="0.5"
-                    strokeOpacity="0.3"
-                  />
-                ))}
+                  {/* SVG overlay — viewBox matches image 874×1122, sits exactly on top */}
+                  <Svg viewBox="0 0 874 1122" style={StyleSheet.absoluteFill}>
+                    {/* Defs block for heatmap gradients */}
+                    <Defs>
+                      <RadialGradient id="redHeat" cx="50%" cy="50%" r="50%">
+                        <Stop offset="0%" stopColor={Colors.red} stopOpacity="0.65" />
+                        <Stop offset="50%" stopColor={Colors.red} stopOpacity="0.3" />
+                        <Stop offset="100%" stopColor={Colors.red} stopOpacity="0" />
+                      </RadialGradient>
+                      <RadialGradient id="amberHeat" cx="50%" cy="50%" r="50%">
+                        <Stop offset="0%" stopColor={Colors.amber} stopOpacity="0.65" />
+                        <Stop offset="50%" stopColor={Colors.amber} stopOpacity="0.28" />
+                        <Stop offset="100%" stopColor={Colors.amber} stopOpacity="0" />
+                      </RadialGradient>
+                      <RadialGradient id="greenHeat" cx="50%" cy="50%" r="50%">
+                        <Stop offset="0%" stopColor={Colors.green} stopOpacity="0.6" />
+                        <Stop offset="50%" stopColor={Colors.green} stopOpacity="0.25" />
+                        <Stop offset="100%" stopColor={Colors.green} stopOpacity="0" />
+                      </RadialGradient>
+                    </Defs>
 
-                {/* Draw Boundaries of Sub-regions */}
-                {BOUNDARIES[activeRank].map((region) => (
-                  <Polygon
-                    key={region.id}
-                    points={region.points}
-                    fill={region.fillColor}
-                    stroke={region.borderColor}
-                    strokeWidth="1.5"
-                    strokeDasharray="4,4"
-                  />
-                ))}
+                    {/* ─────────────────────────────────────────────────────────── */}
+                    {/* HOTSPOT HEATMAPS — semi-transparent radial glow circles      */}
+                    {/* These are clearly crime-data overlays, not map features        */}
+                    {/* ─────────────────────────────────────────────────────────── */}
+                    {activeLayers.hotspots &&
+                      HOTSPOTS[activeRank].map((hotspot) => {
+                        const grad =
+                          hotspot.severity === 'red'
+                            ? 'url(#redHeat)'
+                            : hotspot.severity === 'amber'
+                            ? 'url(#amberHeat)'
+                            : 'url(#greenHeat)';
+                        const dotColor =
+                          hotspot.severity === 'red' ? Colors.red
+                          : hotspot.severity === 'amber' ? Colors.amber
+                          : Colors.green;
+                        return (
+                          <G key={hotspot.id}>
+                            {/* Radial heatmap glow */}
+                            <Circle
+                              cx={hotspot.x}
+                              cy={hotspot.y}
+                              r={hotspot.radius}
+                              fill={grad}
+                              onPress={() => setSelectedHotspot(hotspot)}
+                            />
+                            {/* Solid center dot with white ring — clearly our data overlay */}
+                            <Circle cx={hotspot.x} cy={hotspot.y} r="9" fill="white" opacity="0.85" />
+                            <Circle
+                              cx={hotspot.x}
+                              cy={hotspot.y}
+                              r="7"
+                              fill={dotColor}
+                              onPress={() => setSelectedHotspot(hotspot)}
+                            />
+                            {/* Hotspot label badge — white pill so it's clearly our overlay */}
+                            <Rect
+                              x={hotspot.x - 36}
+                              y={hotspot.y + 11}
+                              width="72"
+                              height="13"
+                              rx="3"
+                              fill="white"
+                              opacity="0.88"
+                            />
+                            <SvgText
+                              x={hotspot.x}
+                              y={hotspot.y + 21}
+                              fontSize="8"
+                              fill={dotColor}
+                              fontFamily={FontFamily.bodyMedium}
+                              textAnchor="middle"
+                              fontWeight="bold"
+                            >
+                              {hotspot.name.length > 14 ? hotspot.name.slice(0, 13) + '…' : hotspot.name}
+                            </SvgText>
+                          </G>
+                        );
+                      })}
 
-                {/* Draw Major Road Network */}
-                {ROADS[activeRank].map((road) => (
-                  <Polyline
-                    key={road.id}
-                    points={road.points}
-                    fill="none"
-                    stroke={Colors.mapRoad}
-                    strokeWidth={road.width}
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeOpacity="0.8"
-                  />
-                ))}
+                    {/* ─────────────────────────────────────────────────────────── */}
+                    {/* PATROL ROUTE HIGHLIGHT (when selected)                         */}
+                    {/* ─────────────────────────────────────────────────────────── */}
+                    {highlightRouteId && (() => {
+                      const unit = ASSETS[activeRank].find((a) => a.id === highlightRouteId);
+                      if (unit && unit.details?.route) {
+                        return (
+                          <Polyline
+                            points={unit.details.route}
+                            fill="none"
+                            stroke={Colors.red}
+                            strokeWidth="3"
+                            strokeDasharray="6,4"
+                            strokeOpacity="0.95"
+                          />
+                        );
+                      }
+                      return null;
+                    })()}
 
-                {/* Draw Hotspot Heatmaps */}
-                {activeLayers.hotspots &&
-                  HOTSPOTS[activeRank].map((hotspot) => {
-                    const grad =
-                      hotspot.severity === 'red'
-                        ? 'url(#redHeat)'
-                        : hotspot.severity === 'amber'
-                        ? 'url(#amberHeat)'
-                        : 'url(#greenHeat)';
-                    return (
-                      <G key={hotspot.id}>
-                        {/* Glowing Radial Circle */}
-                        <Circle
-                          cx={hotspot.x}
-                          cy={hotspot.y}
-                          r={hotspot.radius}
-                          fill={grad}
-                          onPress={() => setSelectedHotspot(hotspot)}
-                        />
-                        {/* Heatmap center indicator */}
-                        <Circle
-                          cx={hotspot.x}
-                          cy={hotspot.y}
-                          r="5"
-                          fill={
-                            hotspot.severity === 'red'
-                              ? Colors.red
-                              : hotspot.severity === 'amber'
-                              ? Colors.amber
-                              : Colors.green
-                          }
-                          stroke="#FFFDF8"
-                          strokeWidth="1"
-                          onPress={() => setSelectedHotspot(hotspot)}
-                        />
-                      </G>
-                    );
-                  })}
+                    {/* ─────────────────────────────────────────────────────────── */}
+                    {/* MAP ASSET MARKERS (stations, patrols, CCTVs, checkpoints etc.) */}
+                    {/* Pin-drop style: big solid colored circle + icon + white label   */}
+                    {/* Visually distinct from map background by design                 */}
+                    {/* ─────────────────────────────────────────────────────────── */}
+                    {ASSETS[activeRank].map((asset) => {
+                      if (!activeLayers[asset.type]) return null;
 
-                {/* Draw Highlighted Route for selected patrol vehicle */}
-                {highlightRouteId && (() => {
-                  const unit = ASSETS[activeRank].find((a) => a.id === highlightRouteId);
-                  if (unit && unit.details?.route) {
-                    return (
-                      <Polyline
-                        points={unit.details.route}
-                        fill="none"
-                        stroke={Colors.red}
-                        strokeWidth="2.5"
-                        strokeDasharray="5,5"
-                        strokeOpacity="0.9"
-                      />
-                    );
-                  }
-                  return null;
-                })()}
+                      const isPatrol = asset.type === 'patrol';
+                      const isStation = asset.type === 'station';
+                      const icon = renderMarkerIcon(asset.type, asset.severity);
 
-                {/* Labels for Regions */}
-                {BOUNDARIES[activeRank].map((region) => (
-                  <SvgText
-                    key={`lbl-${region.id}`}
-                    x={region.labelX}
-                    y={region.labelY}
-                    fill={Colors.steel}
-                    fontSize="9.5"
-                    fontFamily={FontFamily.mono}
-                    textAnchor="middle"
-                    opacity="0.65"
-                  >
-                    {region.name.toUpperCase()}
-                  </SvgText>
-                ))}
+                      // Pin color by type
+                      const pinFill =
+                        isPatrol ? Colors.inkNavy
+                        : isStation ? '#1a5276'
+                        : asset.type === 'incident' ? Colors.red
+                        : asset.type === 'checkpoint' ? '#7D5A1E'
+                        : asset.type === 'cctv' ? '#2E4057'
+                        : asset.type === 'fir' ? '#8E44AD'
+                        : Colors.steel;
 
-                {/* Draw Markers (Map Assets) */}
-                {ASSETS[activeRank].map((asset) => {
-                  // Check layer visibility
-                  if (!activeLayers[asset.type]) return null;
+                      const pinR = isPatrol ? 14 : isStation ? 13 : 11;
 
-                  // Render asset icon
-                  const icon = renderMarkerIcon(asset.type, asset.severity);
-                  const isPatrol = asset.type === 'patrol';
-
-                  return (
-                    <G
-                      key={asset.id}
-                      onPress={() => {
-                        if (isPatrol) setSelectedPatrol(asset.details);
-                        else if (asset.type === 'cctv') setSelectedCctv(asset.details);
-                        else if (asset.type === 'checkpoint') setSelectedCheckpoint(asset.details);
-                        else if (asset.type === 'incident') setSelectedIncident(asset.details);
-                        else if (asset.type === 'fir') setSelectedFir(asset.details);
-                      }}
-                    >
-                      {/* Marker Icon Shield */}
-                      <Circle
-                        cx={asset.x}
-                        cy={asset.y}
-                        r={isPatrol ? '12' : '10'}
-                        fill={isPatrol ? Colors.inkNavy : Colors.card}
-                        stroke={
-                          asset.severity === 'red'
-                            ? Colors.red
-                            : asset.severity === 'amber'
-                            ? Colors.amber
-                            : Colors.steel
-                        }
-                        strokeWidth="1.5"
-                      />
-                      {/* Emoji Icon overlay */}
-                      <SvgText
-                        x={asset.x}
-                        y={asset.y + 4}
-                        fontSize={isPatrol ? '10' : '9'}
-                        textAnchor="middle"
-                      >
-                        {icon}
-                      </SvgText>
-                      {/* Short label */}
-                      <SvgText
-                        x={asset.x}
-                        y={asset.y + 20}
-                        fontSize="8.5"
-                        fill={Colors.inkNavy}
-                        fontFamily={FontFamily.bodyMedium}
-                        textAnchor="middle"
-                      >
-                        {asset.label}
-                      </SvgText>
-                    </G>
-                  );
-                })}
-              </Svg>
-
-              {/* Map Floating Card Overlays */}
-
-              {/* 1. Patrol Unit Telemetry Card */}
-              {selectedPatrol && (
-                <View style={styles.floatingOverlayCard}>
-                  <View style={styles.cardHeaderRow}>
-                    <Text style={styles.cardHeading}>🚔 Patrol Telemetry Live</Text>
-                    <TouchableOpacity onPress={() => { setSelectedPatrol(null); setHighlightRouteId(null); }}>
-                      <Text style={styles.closeBtnText}>✕</Text>
-                    </TouchableOpacity>
-                  </View>
-                  <View style={styles.cardBody}>
-                    <View style={styles.telemetryRow}>
-                      <View style={styles.telemetryCol}>
-                        <Text style={styles.cardLabel}>PATROL ID</Text>
-                        <Text style={styles.cardValBold}>{selectedPatrol.patrolId}</Text>
-                      </View>
-                      <View style={styles.telemetryCol}>
-                        <Text style={styles.cardLabel}>VEHICLE NO</Text>
-                        <Text style={styles.cardValMono}>{selectedPatrol.vehicleNo}</Text>
-                      </View>
-                      <View style={styles.telemetryCol}>
-                        <Text style={styles.cardLabel}>STATUS</Text>
-                        <View style={[styles.statusPill, { backgroundColor: getStatusColor(selectedPatrol.status) + '15' }]}>
-                          <Text style={[styles.statusText, { color: getStatusColor(selectedPatrol.status) }]}>
-                            {selectedPatrol.status.toUpperCase()}
-                          </Text>
-                        </View>
-                      </View>
-                    </View>
-
-                    <View style={styles.telemetryRow}>
-                      <View style={{ flex: 1 }}>
-                        <Text style={styles.cardLabel}>DUTY OFFICER</Text>
-                        <Text style={styles.cardValText}>{selectedPatrol.dutyOfficer}</Text>
-                      </View>
-                      <View style={{ flex: 1 }}>
-                        <Text style={styles.cardLabel}>ASSIGNED OFFICERS</Text>
-                        <Text style={styles.cardValText}>{selectedPatrol.assignedCrew}</Text>
-                      </View>
-                    </View>
-
-                    <View style={styles.telemetryRow}>
-                      <View style={{ flex: 1 }}>
-                        <Text style={styles.cardLabel}>BEAT AREA / ROUTE</Text>
-                        <Text style={styles.cardValText}>{selectedPatrol.area}</Text>
-                      </View>
-                      <View style={{ flex: 1 }}>
-                        <Text style={styles.cardLabel}>SHIFT TIMINGS</Text>
-                        <Text style={styles.cardValText}>{selectedPatrol.shift}</Text>
-                      </View>
-                    </View>
-
-                    <View style={styles.telemetryRow}>
-                      <Text style={styles.cardLabel}>TELEMETRY LAST UPDATED: </Text>
-                      <Text style={styles.cardValMono}>{selectedPatrol.lastUpdated}</Text>
-                    </View>
-
-                    <View style={styles.cardActionsRow}>
-                      <TouchableOpacity
-                        style={[styles.actionBtn, highlightRouteId === selectedPatrol.patrolId && styles.actionBtnActive]}
-                        onPress={() => setHighlightRouteId(
-                          highlightRouteId === selectedPatrol.patrolId ? null : selectedPatrol.patrolId
-                        )}
-                      >
-                        <Text style={styles.actionBtnText}>
-                          {highlightRouteId === selectedPatrol.patrolId ? '✓ Route Highlighted' : '🗺 View Route'}
-                        </Text>
-                      </TouchableOpacity>
-                      <TouchableOpacity
-                        style={[styles.actionBtn, styles.actionBtnNavy]}
-                        onPress={() => triggerComms(selectedPatrol.dutyOfficer)}
-                      >
-                        <Text style={styles.actionBtnTextWhite}>📞 Contact Officer</Text>
-                      </TouchableOpacity>
-                    </View>
-                  </View>
+                      return (
+                        <G
+                          key={asset.id}
+                          onPress={() => {
+                            if (isPatrol) setSelectedPatrol(asset.details);
+                            else if (asset.type === 'cctv') setSelectedCctv(asset.details);
+                            else if (asset.type === 'checkpoint') setSelectedCheckpoint(asset.details);
+                            else if (asset.type === 'incident') setSelectedIncident(asset.details);
+                            else if (asset.type === 'fir') setSelectedFir(asset.details);
+                          }}
+                        >
+                          {/* Outer white ring — makes pin pop against any map background */}
+                          <Circle cx={asset.x} cy={asset.y} r={pinR + 2} fill="white" opacity="0.9" />
+                          {/* Colored pin body */}
+                          <Circle cx={asset.x} cy={asset.y} r={pinR} fill={pinFill} />
+                          {/* Icon */}
+                          <SvgText
+                            x={asset.x}
+                            y={asset.y + (pinR * 0.38)}
+                            fontSize={isPatrol ? '12' : '10'}
+                            textAnchor="middle"
+                          >
+                            {icon}
+                          </SvgText>
+                          {/* White label badge below pin */}
+                          <Rect
+                            x={asset.x - 34}
+                            y={asset.y + pinR + 3}
+                            width="68"
+                            height="13"
+                            rx="3"
+                            fill="white"
+                            opacity="0.92"
+                            stroke={pinFill}
+                            strokeWidth="0.8"
+                          />
+                          <SvgText
+                            x={asset.x}
+                            y={asset.y + pinR + 13}
+                            fontSize="7.5"
+                            fill={pinFill}
+                            fontFamily={FontFamily.bodyMedium}
+                            textAnchor="middle"
+                            fontWeight="bold"
+                          >
+                            {asset.label.length > 12 ? asset.label.slice(0, 11) + '…' : asset.label}
+                          </SvgText>
+                        </G>
+                      );
+                    })}
+                  </Svg>
                 </View>
-              )}
-
-              {/* 2. Crime Hotspot Analytics Card */}
-              {selectedHotspot && (
-                <View style={styles.floatingOverlayCard}>
-                  <View style={styles.cardHeaderRow}>
-                    <Text style={styles.cardHeading}>🔴 Hotspot Analytics: {selectedHotspot.name}</Text>
-                    <TouchableOpacity onPress={() => setSelectedHotspot(null)}>
-                      <Text style={styles.closeBtnText}>✕</Text>
-                    </TouchableOpacity>
-                  </View>
-                  <View style={styles.cardBody}>
-                    <View style={styles.telemetryRow}>
-                      <View style={styles.telemetryCol}>
-                        <Text style={styles.cardLabel}>CRITICAL RISK LEVEL</Text>
-                        <Text style={[styles.cardValBold, { color: selectedHotspot.severity === 'red' ? Colors.red : Colors.amber }]}>
-                          {selectedHotspot.riskLevel}
-                        </Text>
-                      </View>
-                      <View style={styles.telemetryCol}>
-                        <Text style={styles.cardLabel}>ACTIVE FIR COUNT</Text>
-                        <Text style={styles.cardValBold}>{selectedHotspot.firCount} cases</Text>
-                      </View>
-                    </View>
-
-                    <View style={styles.telemetryRow}>
-                      <Text style={styles.cardLabel}>CRIME TYPE RATIO</Text>
-                      <Text style={styles.cardValText}>{selectedHotspot.crimeTypes}</Text>
-                    </View>
-
-                    <View style={styles.incidentListBlock}>
-                      <Text style={styles.cardLabel}>RECENT REPORTS IN SECTOR</Text>
-                      {selectedHotspot.recentIncidents.map((incident, idx) => (
-                        <Text key={idx} style={styles.incidentBullet}>
-                          • {incident}
-                        </Text>
-                      ))}
-                    </View>
-
-                    <View style={styles.incidentListBlock}>
-                      <Text style={styles.cardLabel}>CLOSEST PATROL ASSETS</Text>
-                      {selectedHotspot.nearbyPatrols.map((patrol, idx) => (
-                        <Text key={idx} style={styles.incidentBullet}>
-                          📌 {patrol}
-                        </Text>
-                      ))}
-                    </View>
-
-                    <View style={styles.cardActionsRow}>
-                      <TouchableOpacity
-                        style={styles.actionBtn}
-                        onPress={() => triggerComms('Station Dispatch Coordinator')}
-                      >
-                        <Text style={styles.actionBtnText}>🚔 Dispatch Patrols</Text>
-                      </TouchableOpacity>
-                      <TouchableOpacity
-                        style={[styles.actionBtn, styles.actionBtnNavy]}
-                        onPress={() => {
-                          setSelectedHotspot(null);
-                          // Force navigation to case files
-                          navigation.navigate('CaseFiles');
-                        }}
-                      >
-                        <Text style={styles.actionBtnTextWhite}>📁 Open Sector Cases</Text>
-                      </TouchableOpacity>
-                    </View>
-                  </View>
-                </View>
-              )}
-
-              {/* 3. CCTV Feed Popup Card */}
-              {selectedCctv && (
-                <View style={styles.floatingOverlayCard}>
-                  <View style={styles.cardHeaderRow}>
-                    <Text style={styles.cardHeading}>📹 CCTV Live Feed: {selectedCctv.id}</Text>
-                    <TouchableOpacity onPress={() => setSelectedCctv(null)}>
-                      <Text style={styles.closeBtnText}>✕</Text>
-                    </TouchableOpacity>
-                  </View>
-                  <View style={styles.cardBody}>
-                    <Text style={styles.cardLabel}>LOCATION: {selectedCctv.area.toUpperCase()}</Text>
-
-                    {/* Simulating Video Frame with static noise lines */}
-                    <View style={styles.cctvStreamWindow}>
-                      {cctvFrame === 0 && <View style={styles.noiseLine1} />}
-                      {cctvFrame === 1 && <View style={styles.noiseLine2} />}
-                      {cctvFrame === 2 && <View style={styles.noiseLine3} />}
-                      {cctvFrame === 3 && <View style={styles.noiseLine4} />}
-
-                      {/* Moving timestamps & REC blinker */}
-                      <View style={styles.cctvOverlayTextRow}>
-                        <View style={styles.recBlinkRow}>
-                          <View style={styles.recDot} />
-                          <Text style={styles.recText}>REC</Text>
-                        </View>
-                        <Text style={styles.cctvTimestamp}>
-                          {new Date().toISOString().replace('T', ' ').substring(0, 19)} IST
-                        </Text>
-                      </View>
-
-                      <View style={styles.cctvWatermark}>
-                        <Text style={styles.watermarkText}>KSP SECURE INTERNAL FEED</Text>
-                        <Text style={styles.watermarkTextSub}>{selectedCctv.resolution} · {selectedCctv.rotation}</Text>
-                      </View>
-                    </View>
-
-                    <View style={styles.cardActionsRow}>
-                      <TouchableOpacity
-                        style={styles.actionBtn}
-                        onPress={() => triggerComms('Traffic Command Control')}
-                      >
-                        <Text style={styles.actionBtnText}>📞 Contact Traffic Control</Text>
-                      </TouchableOpacity>
-                      <TouchableOpacity
-                        style={[styles.actionBtn, styles.actionBtnNavy]}
-                        onPress={() => setSelectedCctv(null)}
-                      >
-                        <Text style={styles.actionBtnTextWhite}>Close Feed</Text>
-                      </TouchableOpacity>
-                    </View>
-                  </View>
-                </View>
-              )}
-
-              {/* 4. Checkpoint Popup Card */}
-              {selectedCheckpoint && (
-                <View style={styles.floatingOverlayCard}>
-                  <View style={styles.cardHeaderRow}>
-                    <Text style={styles.cardHeading}>🛑 Checkpoint Detail: {selectedCheckpoint.name}</Text>
-                    <TouchableOpacity onPress={() => setSelectedCheckpoint(null)}>
-                      <Text style={styles.closeBtnText}>✕</Text>
-                    </TouchableOpacity>
-                  </View>
-                  <View style={styles.cardBody}>
-                    <View style={styles.telemetryRow}>
-                      <View style={styles.telemetryCol}>
-                        <Text style={styles.cardLabel}>OFFICER IN CHARGE</Text>
-                        <Text style={styles.cardValBold}>{selectedCheckpoint.dutyOfficer}</Text>
-                      </View>
-                      <View style={styles.telemetryCol}>
-                        <Text style={styles.cardLabel}>STATUS</Text>
-                        <View style={[styles.statusPill, { backgroundColor: getStatusColor(selectedCheckpoint.status) + '15' }]}>
-                          <Text style={[styles.statusText, { color: getStatusColor(selectedCheckpoint.status) }]}>
-                            {selectedCheckpoint.status.toUpperCase()}
-                          </Text>
-                        </View>
-                      </View>
-                    </View>
-                    <View style={styles.telemetryRow}>
-                      <View style={styles.telemetryCol}>
-                        <Text style={styles.cardLabel}>TOTAL VEHICLES SCREENED</Text>
-                        <Text style={styles.cardValBold}>{selectedCheckpoint.vehiclesScreened} today</Text>
-                      </View>
-                    </View>
-                    <View style={styles.cardActionsRow}>
-                      <TouchableOpacity style={styles.actionBtn} onPress={() => triggerComms(selectedCheckpoint.dutyOfficer)}>
-                        <Text style={styles.actionBtnText}>📞 Contact Checkpoint</Text>
-                      </TouchableOpacity>
-                    </View>
-                  </View>
-                </View>
-              )}
-
-              {/* 5. Incident Card */}
-              {selectedIncident && (
-                <View style={styles.floatingOverlayCard}>
-                  <View style={styles.cardHeaderRow}>
-                    <Text style={styles.cardHeading}>⚠️ Active Incident Report</Text>
-                    <TouchableOpacity onPress={() => setSelectedIncident(null)}>
-                      <Text style={styles.closeBtnText}>✕</Text>
-                    </TouchableOpacity>
-                  </View>
-                  <View style={styles.cardBody}>
-                    <Text style={[styles.cardValBold, { color: Colors.red, marginBottom: 8 }]}>
-                      {selectedIncident.title}
-                    </Text>
-                    <View style={styles.telemetryRow}>
-                      <View style={styles.telemetryCol}>
-                        <Text style={styles.cardLabel}>REPORTER</Text>
-                        <Text style={styles.cardValText}>{selectedIncident.reporter}</Text>
-                      </View>
-                      <View style={styles.telemetryCol}>
-                        <Text style={styles.cardLabel}>TIME FILED</Text>
-                        <Text style={styles.cardValMono}>{selectedIncident.time}</Text>
-                      </View>
-                    </View>
-                    <View style={styles.incidentListBlock}>
-                      <Text style={styles.cardLabel}>INCIDENT REPORT DETAILS</Text>
-                      <Text style={styles.cardValText}>{selectedIncident.details}</Text>
-                    </View>
-                    <View style={styles.cardActionsRow}>
-                      <TouchableOpacity
-                        style={styles.actionBtn}
-                        onPress={() => triggerComms('Command Dispatch Center')}
-                      >
-                        <Text style={styles.actionBtnText}>🚔 Dispatch Nearest Unit</Text>
-                      </TouchableOpacity>
-                    </View>
-                  </View>
-                </View>
-              )}
-
-              {/* 6. FIR Case Card */}
-              {selectedFir && (
-                <View style={styles.floatingOverlayCard}>
-                  <View style={styles.cardHeaderRow}>
-                    <Text style={styles.cardHeading}>📁 Case File Quickview</Text>
-                    <TouchableOpacity onPress={() => setSelectedFir(null)}>
-                      <Text style={styles.closeBtnText}>✕</Text>
-                    </TouchableOpacity>
-                  </View>
-                  <View style={styles.cardBody}>
-                    <Text style={styles.cardValBold}>{selectedFir.firNo}: {selectedFir.title}</Text>
-                    <View style={styles.telemetryRow}>
-                      <View style={styles.telemetryCol}>
-                        <Text style={styles.cardLabel}>INVESTIGATING OFFICER</Text>
-                        <Text style={styles.cardValText}>{selectedFir.officer}</Text>
-                      </View>
-                      <View style={styles.telemetryCol}>
-                        <Text style={styles.cardLabel}>FILED DATE</Text>
-                        <Text style={styles.cardValMono}>{selectedFir.date}</Text>
-                      </View>
-                    </View>
-                    <View style={styles.telemetryRow}>
-                      <Text style={styles.cardLabel}>COMPLAINANT: </Text>
-                      <Text style={styles.cardValText}>{selectedFir.complainant}</Text>
-                    </View>
-                    <View style={styles.cardActionsRow}>
-                      <TouchableOpacity
-                        style={[styles.actionBtn, styles.actionBtnNavy]}
-                        onPress={() => handleViewCase(selectedFir.firNo)}
-                      >
-                        <Text style={styles.actionBtnTextWhite}>📁 Open Case Files</Text>
-                      </TouchableOpacity>
-                    </View>
-                  </View>
-                </View>
-              )}
+              </ScrollView>
             </View>
+
+            {/* ─── Floating info cards (rendered below the map, scroll to view) ── */}
+
+            {/* 1. Patrol Unit Telemetry Card */}
+            {selectedPatrol && (
+              <View style={styles.floatingOverlayCard}>
+                <View style={styles.cardHeaderRow}>
+                  <Text style={styles.cardHeading}>🚔 Patrol Telemetry Live</Text>
+                  <TouchableOpacity onPress={() => { setSelectedPatrol(null); setHighlightRouteId(null); }}>
+                    <Text style={styles.closeBtnText}>✕</Text>
+                  </TouchableOpacity>
+                </View>
+                <View style={styles.cardBody}>
+                  <View style={styles.telemetryRow}>
+                    <View style={styles.telemetryCol}>
+                      <Text style={styles.cardLabel}>PATROL ID</Text>
+                      <Text style={styles.cardValBold}>{selectedPatrol.patrolId}</Text>
+                    </View>
+                    <View style={styles.telemetryCol}>
+                      <Text style={styles.cardLabel}>VEHICLE NO</Text>
+                      <Text style={styles.cardValMono}>{selectedPatrol.vehicleNo}</Text>
+                    </View>
+                    <View style={styles.telemetryCol}>
+                      <Text style={styles.cardLabel}>STATUS</Text>
+                      <View style={[styles.statusPill, { backgroundColor: getStatusColor(selectedPatrol.status) + '15' }]}>
+                        <Text style={[styles.statusText, { color: getStatusColor(selectedPatrol.status) }]}>
+                          {selectedPatrol.status.toUpperCase()}
+                        </Text>
+                      </View>
+                    </View>
+                  </View>
+                  <View style={styles.telemetryRow}>
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.cardLabel}>DUTY OFFICER</Text>
+                      <Text style={styles.cardValText}>{selectedPatrol.dutyOfficer}</Text>
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.cardLabel}>ASSIGNED OFFICERS</Text>
+                      <Text style={styles.cardValText}>{selectedPatrol.assignedCrew}</Text>
+                    </View>
+                  </View>
+                  <View style={styles.telemetryRow}>
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.cardLabel}>BEAT AREA / ROUTE</Text>
+                      <Text style={styles.cardValText}>{selectedPatrol.area}</Text>
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.cardLabel}>SHIFT TIMINGS</Text>
+                      <Text style={styles.cardValText}>{selectedPatrol.shift}</Text>
+                    </View>
+                  </View>
+                  <View style={styles.telemetryRow}>
+                    <Text style={styles.cardLabel}>TELEMETRY LAST UPDATED: </Text>
+                    <Text style={styles.cardValMono}>{selectedPatrol.lastUpdated}</Text>
+                  </View>
+                  <View style={styles.cardActionsRow}>
+                    <TouchableOpacity
+                      style={[styles.actionBtn, highlightRouteId === selectedPatrol.patrolId && styles.actionBtnActive]}
+                      onPress={() => setHighlightRouteId(highlightRouteId === selectedPatrol.patrolId ? null : selectedPatrol.patrolId)}
+                    >
+                      <Text style={styles.actionBtnText}>
+                        {highlightRouteId === selectedPatrol.patrolId ? '✓ Route Highlighted' : '🗺 View Route'}
+                      </Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity style={[styles.actionBtn, styles.actionBtnNavy]} onPress={() => triggerComms(selectedPatrol.dutyOfficer)}>
+                      <Text style={styles.actionBtnTextWhite}>📞 Contact Officer</Text>
+                    </TouchableOpacity>
+                  </View>
+                </View>
+              </View>
+            )}
+
+            {/* 2. Crime Hotspot Analytics Card */}
+            {selectedHotspot && (
+              <View style={styles.floatingOverlayCard}>
+                <View style={styles.cardHeaderRow}>
+                  <Text style={styles.cardHeading}>🔴 Hotspot Analytics: {selectedHotspot.name}</Text>
+                  <TouchableOpacity onPress={() => setSelectedHotspot(null)}>
+                    <Text style={styles.closeBtnText}>✕</Text>
+                  </TouchableOpacity>
+                </View>
+                <View style={styles.cardBody}>
+                  <View style={styles.telemetryRow}>
+                    <View style={styles.telemetryCol}>
+                      <Text style={styles.cardLabel}>CRITICAL RISK LEVEL</Text>
+                      <Text style={[styles.cardValBold, { color: selectedHotspot.severity === 'red' ? Colors.red : Colors.amber }]}>
+                        {selectedHotspot.riskLevel}
+                      </Text>
+                    </View>
+                    <View style={styles.telemetryCol}>
+                      <Text style={styles.cardLabel}>ACTIVE FIR COUNT</Text>
+                      <Text style={styles.cardValBold}>{selectedHotspot.firCount} cases</Text>
+                    </View>
+                  </View>
+                  <View style={styles.telemetryRow}>
+                    <Text style={styles.cardLabel}>CRIME TYPE RATIO</Text>
+                    <Text style={styles.cardValText}>{selectedHotspot.crimeTypes}</Text>
+                  </View>
+                  <View style={styles.incidentListBlock}>
+                    <Text style={styles.cardLabel}>RECENT REPORTS IN SECTOR</Text>
+                    {selectedHotspot.recentIncidents.map((inc, idx) => (
+                      <Text key={idx} style={styles.incidentBullet}>• {inc}</Text>
+                    ))}
+                  </View>
+                  <View style={styles.incidentListBlock}>
+                    <Text style={styles.cardLabel}>CLOSEST PATROL ASSETS</Text>
+                    {selectedHotspot.nearbyPatrols.map((p, idx) => (
+                      <Text key={idx} style={styles.incidentBullet}>📌 {p}</Text>
+                    ))}
+                  </View>
+                  <View style={styles.cardActionsRow}>
+                    <TouchableOpacity style={styles.actionBtn} onPress={() => triggerComms('Station Dispatch Coordinator')}>
+                      <Text style={styles.actionBtnText}>🚔 Dispatch Patrols</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity style={[styles.actionBtn, styles.actionBtnNavy]} onPress={() => { setSelectedHotspot(null); navigation.navigate('CaseFiles'); }}>
+                      <Text style={styles.actionBtnTextWhite}>📁 Open Sector Cases</Text>
+                    </TouchableOpacity>
+                  </View>
+                </View>
+              </View>
+            )}
+
+            {/* 3. CCTV Feed Popup Card */}
+            {selectedCctv && (
+              <View style={styles.floatingOverlayCard}>
+                <View style={styles.cardHeaderRow}>
+                  <Text style={styles.cardHeading}>📹 CCTV Live Feed: {selectedCctv.id}</Text>
+                  <TouchableOpacity onPress={() => setSelectedCctv(null)}>
+                    <Text style={styles.closeBtnText}>✕</Text>
+                  </TouchableOpacity>
+                </View>
+                <View style={styles.cardBody}>
+                  <Text style={styles.cardLabel}>LOCATION: {selectedCctv.area.toUpperCase()}</Text>
+                  <View style={styles.cctvStreamWindow}>
+                    {cctvFrame === 0 && <View style={styles.noiseLine1} />}
+                    {cctvFrame === 1 && <View style={styles.noiseLine2} />}
+                    {cctvFrame === 2 && <View style={styles.noiseLine3} />}
+                    {cctvFrame === 3 && <View style={styles.noiseLine4} />}
+                    <View style={styles.cctvOverlayTextRow}>
+                      <View style={styles.recBlinkRow}>
+                        <View style={styles.recDot} />
+                        <Text style={styles.recText}>REC</Text>
+                      </View>
+                      <Text style={styles.cctvTimestamp}>
+                        {new Date().toISOString().replace('T', ' ').substring(0, 19)} IST
+                      </Text>
+                    </View>
+                    <View style={styles.cctvWatermark}>
+                      <Text style={styles.watermarkText}>KSP SECURE INTERNAL FEED</Text>
+                      <Text style={styles.watermarkTextSub}>{selectedCctv.resolution} · {selectedCctv.rotation}</Text>
+                    </View>
+                  </View>
+                  <View style={styles.cardActionsRow}>
+                    <TouchableOpacity style={styles.actionBtn} onPress={() => triggerComms('Traffic Command Control')}>
+                      <Text style={styles.actionBtnText}>📞 Contact Traffic Control</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity style={[styles.actionBtn, styles.actionBtnNavy]} onPress={() => setSelectedCctv(null)}>
+                      <Text style={styles.actionBtnTextWhite}>Close Feed</Text>
+                    </TouchableOpacity>
+                  </View>
+                </View>
+              </View>
+            )}
+
+            {/* 4. Checkpoint Popup Card */}
+            {selectedCheckpoint && (
+              <View style={styles.floatingOverlayCard}>
+                <View style={styles.cardHeaderRow}>
+                  <Text style={styles.cardHeading}>🛑 Checkpoint Detail: {selectedCheckpoint.name}</Text>
+                  <TouchableOpacity onPress={() => setSelectedCheckpoint(null)}>
+                    <Text style={styles.closeBtnText}>✕</Text>
+                  </TouchableOpacity>
+                </View>
+                <View style={styles.cardBody}>
+                  <View style={styles.telemetryRow}>
+                    <View style={styles.telemetryCol}>
+                      <Text style={styles.cardLabel}>OFFICER IN CHARGE</Text>
+                      <Text style={styles.cardValBold}>{selectedCheckpoint.dutyOfficer}</Text>
+                    </View>
+                    <View style={styles.telemetryCol}>
+                      <Text style={styles.cardLabel}>STATUS</Text>
+                      <View style={[styles.statusPill, { backgroundColor: getStatusColor(selectedCheckpoint.status) + '15' }]}>
+                        <Text style={[styles.statusText, { color: getStatusColor(selectedCheckpoint.status) }]}>
+                          {selectedCheckpoint.status.toUpperCase()}
+                        </Text>
+                      </View>
+                    </View>
+                  </View>
+                  <View style={styles.telemetryRow}>
+                    <View style={styles.telemetryCol}>
+                      <Text style={styles.cardLabel}>TOTAL VEHICLES SCREENED</Text>
+                      <Text style={styles.cardValBold}>{selectedCheckpoint.vehiclesScreened} today</Text>
+                    </View>
+                  </View>
+                  <View style={styles.cardActionsRow}>
+                    <TouchableOpacity style={styles.actionBtn} onPress={() => triggerComms(selectedCheckpoint.dutyOfficer)}>
+                      <Text style={styles.actionBtnText}>📞 Contact Checkpoint</Text>
+                    </TouchableOpacity>
+                  </View>
+                </View>
+              </View>
+            )}
+
+            {/* 5. Incident Card */}
+            {selectedIncident && (
+              <View style={styles.floatingOverlayCard}>
+                <View style={styles.cardHeaderRow}>
+                  <Text style={styles.cardHeading}>⚠️ Active Incident Report</Text>
+                  <TouchableOpacity onPress={() => setSelectedIncident(null)}>
+                    <Text style={styles.closeBtnText}>✕</Text>
+                  </TouchableOpacity>
+                </View>
+                <View style={styles.cardBody}>
+                  <Text style={[styles.cardValBold, { color: Colors.red, marginBottom: 8 }]}>{selectedIncident.title}</Text>
+                  <View style={styles.telemetryRow}>
+                    <View style={styles.telemetryCol}>
+                      <Text style={styles.cardLabel}>REPORTER</Text>
+                      <Text style={styles.cardValText}>{selectedIncident.reporter}</Text>
+                    </View>
+                    <View style={styles.telemetryCol}>
+                      <Text style={styles.cardLabel}>TIME FILED</Text>
+                      <Text style={styles.cardValMono}>{selectedIncident.time}</Text>
+                    </View>
+                  </View>
+                  <View style={styles.incidentListBlock}>
+                    <Text style={styles.cardLabel}>INCIDENT REPORT DETAILS</Text>
+                    <Text style={styles.cardValText}>{selectedIncident.details}</Text>
+                  </View>
+                  <View style={styles.cardActionsRow}>
+                    <TouchableOpacity style={styles.actionBtn} onPress={() => triggerComms('Command Dispatch Center')}>
+                      <Text style={styles.actionBtnText}>🚔 Dispatch Nearest Unit</Text>
+                    </TouchableOpacity>
+                  </View>
+                </View>
+              </View>
+            )}
+
+            {/* 6. FIR Case Card */}
+            {selectedFir && (
+              <View style={styles.floatingOverlayCard}>
+                <View style={styles.cardHeaderRow}>
+                  <Text style={styles.cardHeading}>📁 Case File Quickview</Text>
+                  <TouchableOpacity onPress={() => setSelectedFir(null)}>
+                    <Text style={styles.closeBtnText}>✕</Text>
+                  </TouchableOpacity>
+                </View>
+                <View style={styles.cardBody}>
+                  <Text style={styles.cardValBold}>{selectedFir.firNo}: {selectedFir.title}</Text>
+                  <View style={styles.telemetryRow}>
+                    <View style={styles.telemetryCol}>
+                      <Text style={styles.cardLabel}>INVESTIGATING OFFICER</Text>
+                      <Text style={styles.cardValText}>{selectedFir.officer}</Text>
+                    </View>
+                    <View style={styles.telemetryCol}>
+                      <Text style={styles.cardLabel}>FILED DATE</Text>
+                      <Text style={styles.cardValMono}>{selectedFir.date}</Text>
+                    </View>
+                  </View>
+                  <View style={styles.telemetryRow}>
+                    <Text style={styles.cardLabel}>COMPLAINANT: </Text>
+                    <Text style={styles.cardValText}>{selectedFir.complainant}</Text>
+                  </View>
+                  <View style={styles.cardActionsRow}>
+                    <TouchableOpacity style={[styles.actionBtn, styles.actionBtnNavy]} onPress={() => handleViewCase(selectedFir.firNo)}>
+                      <Text style={styles.actionBtnTextWhite}>📁 Open Case Files</Text>
+                    </TouchableOpacity>
+                  </View>
+                </View>
+              </View>
+            )}
           </View>
         </View>
-      </ScrollView>
+      </View>
 
       {/* ── Comms Call Modal Dialog ───────────────────────────────────────────── */}
       {commsTarget && (
@@ -1435,17 +1499,28 @@ const styles = StyleSheet.create({
   tabTextActive: {
     color: Colors.white,
   },
+  mainContainer: {
+    flex: 1,
+    padding: 16,
+  },
   mainLayout: {
     padding: 16,
   },
   dashboardGrid: {
+    flex: 1,
     flexDirection: Platform.OS === 'web' && Dimensions.get('window').width >= 992 ? 'row' : 'column',
     gap: 16,
+    alignItems: 'stretch',
   },
   sidebarPanel: {
-    flex: 1,
+    flex: Platform.OS === 'web' && Dimensions.get('window').width >= 992 ? 0 : 0,
+    width: Platform.OS === 'web' && Dimensions.get('window').width >= 992 ? 280 : '100%',
+    maxHeight: Platform.OS === 'web' && Dimensions.get('window').width >= 992 ? undefined : 320,
     minWidth: 260,
+  },
+  sidebarContent: {
     gap: 16,
+    paddingBottom: 8,
   },
   statsCard: {
     backgroundColor: Colors.card,
@@ -1549,7 +1624,7 @@ const styles = StyleSheet.create({
     color: Colors.inkNavy,
   },
   mapContainer: {
-    flex: 3,
+    flex: 1,
     backgroundColor: Colors.card,
     borderWidth: 1,
     borderColor: Colors.line,
@@ -1595,32 +1670,54 @@ const styles = StyleSheet.create({
     color: Colors.gray,
   },
   canvasFrame: {
+    flex: 1,
+    overflow: 'hidden',
+    backgroundColor: '#f0ede6',
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.line,
+  },
+  mapScrollView: {
+    flex: 1,
+  },
+  mapScrollContent: {
+    flexGrow: 1,
+  },
+  mapImageWrapper: {
+    width: '100%',
+    aspectRatio: 874 / 1122,
     position: 'relative',
-    backgroundColor: Colors.mapBg,
+  },
+  mapBaseImage: {
+    width: '100%',
+    height: '100%',
+  },
+  svgOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    width: '100%',
+    height: '100%',
   },
   svgMap: {
     width: '100%',
-    height: 500,
+    height: 620,
     backgroundColor: Colors.mapBg,
   },
   floatingOverlayCard: {
-    position: 'absolute',
-    bottom: 12,
-    right: 12,
-    left: 12,
-    backgroundColor: 'rgba(255, 253, 248, 0.96)',
+    marginHorizontal: 12,
+    marginTop: 10,
+    backgroundColor: Colors.card,
     borderWidth: 1,
     borderColor: Colors.line,
     borderRadius: 8,
     padding: 12,
-    zIndex: 10,
     shadowColor: Colors.inkNavy,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.15,
-    shadowRadius: 10,
-    elevation: 8,
-    maxWidth: Platform.OS === 'web' ? 420 : undefined,
-    alignSelf: Platform.OS === 'web' ? 'flex-end' : undefined,
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 4,
   },
   cardHeaderRow: {
     flexDirection: 'row',
