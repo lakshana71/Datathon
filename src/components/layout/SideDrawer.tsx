@@ -38,8 +38,6 @@ const NAV_ITEMS: NavItem[] = [
   { id: 'CrimeMap', label: 'Crime Map', screen: 'CrimeMap', icon: '🗺' },
   { id: 'Alerts', label: 'Alerts', screen: 'Alerts', icon: '🔔' },
   { id: 'more-label', label: 'More', screen: '', icon: '', group: 'label' },
-  { id: 'Search', label: 'Search', screen: 'Search', icon: '🔍' },
-  { id: 'Notifications', label: 'Notifications', screen: 'Notifications', icon: '📬' },
   { id: 'Profile', label: 'Profile', screen: 'Profile', icon: '👤' },
   { id: 'Settings', label: 'Settings', screen: 'Settings', icon: '⚙' },
 ];

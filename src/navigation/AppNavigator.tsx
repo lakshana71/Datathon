@@ -18,6 +18,9 @@ import { EvidenceViewerScreen } from '../screens/cases/EvidenceViewerScreen';
 import { PersonCrimeTrackerScreen } from '../screens/tracker/PersonCrimeTrackerScreen';
 import { DigitalNotebookScreen } from '../screens/notebook/DigitalNotebookScreen';
 import { CrimeMapScreen } from '../screens/dashboard/CrimeMapScreen';
+import { AlertsScreen } from '../screens/dashboard/AlertsScreen';
+import { ProfileScreen } from '../screens/dashboard/ProfileScreen';
+import { SettingsScreen } from '../screens/dashboard/SettingsScreen';
 
 // Drawer
 import { SideDrawer } from '../components/layout/SideDrawer';
@@ -98,6 +101,21 @@ function DrawerNavigator() {
       <Drawer.Screen
         name="CrimeMap"
         component={CrimeMapScreen}
+      />
+
+      <Drawer.Screen
+        name="Alerts"
+        component={AlertsScreen}
+      />
+
+      <Drawer.Screen
+        name="Profile"
+        component={ProfileScreen}
+      />
+
+      <Drawer.Screen
+        name="Settings"
+        component={SettingsScreen}
       />
     </Drawer.Navigator>
   );

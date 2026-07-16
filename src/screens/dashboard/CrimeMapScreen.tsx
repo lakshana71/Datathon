@@ -12,7 +12,13 @@ import {
   Image,
   Platform,
   Dimensions,
+  LayoutAnimation,
+  UIManager,
 } from 'react-native';
+
+if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
+  UIManager.setLayoutAnimationEnabledExperimental(true);
+}
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, {
   Path,
@@ -106,6 +112,48 @@ export const CrimeMapScreen: React.FC = () => {
   const [selectedCheckpoint, setSelectedCheckpoint] = useState<any>(null);
   const [selectedIncident, setSelectedIncident] = useState<any>(null);
   const [selectedFir, setSelectedFir] = useState<any>(null);
+  const [selectedStation, setSelectedStation] = useState<any>(null);
+
+  const closeAllDetails = () => {
+    if (Platform.OS !== 'web') {
+      LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+    }
+    setSelectedPatrol(null);
+    setSelectedHotspot(null);
+    setSelectedCctv(null);
+    setSelectedCheckpoint(null);
+    setSelectedIncident(null);
+    setSelectedFir(null);
+    setSelectedStation(null);
+    setHighlightRouteId(null);
+  };
+
+  const showDetail = (type: 'patrol' | 'hotspot' | 'cctv' | 'checkpoint' | 'incident' | 'fir' | 'station', data: any) => {
+    if (Platform.OS !== 'web') {
+      LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+    }
+    // Clear all first
+    setSelectedPatrol(null);
+    setSelectedHotspot(null);
+    setSelectedCctv(null);
+    setSelectedCheckpoint(null);
+    setSelectedIncident(null);
+    setSelectedFir(null);
+    setSelectedStation(null);
+    setHighlightRouteId(null);
+
+    // Set active one
+    if (type === 'patrol') {
+      setSelectedPatrol(data);
+      if (data?.patrolId) setHighlightRouteId(data.patrolId);
+    }
+    else if (type === 'hotspot') setSelectedHotspot(data);
+    else if (type === 'cctv') setSelectedCctv(data);
+    else if (type === 'checkpoint') setSelectedCheckpoint(data);
+    else if (type === 'incident') setSelectedIncident(data);
+    else if (type === 'fir') setSelectedFir(data);
+    else if (type === 'station') setSelectedStation(data);
+  };
 
   // Secure Communications dialog overlay
   const [commsTarget, setCommsTarget] = useState<string | null>(null);
@@ -180,31 +228,30 @@ export const CrimeMapScreen: React.FC = () => {
   // Reset selected telemetry cards when swapping jurisdictions
   const handleRankChange = (rank: SimulatedRank) => {
     setActiveRank(rank);
-    setSelectedPatrol(null);
-    setSelectedHotspot(null);
-    setSelectedCctv(null);
-    setSelectedCheckpoint(null);
-    setSelectedIncident(null);
-    setSelectedFir(null);
-    setHighlightRouteId(null);
+    closeAllDetails();
   };
 
   // Toggle specific layers
   const toggleLayer = (layer: string) => {
     setActiveLayers((prev) => ({ ...prev, [layer]: !prev[layer] }));
     // Deselect if layer is hidden
-    if (layer === 'patrol') { setSelectedPatrol(null); setHighlightRouteId(null); }
-    if (layer === 'hotspots') setSelectedHotspot(null);
-    if (layer === 'cctv') setSelectedCctv(null);
-    if (layer === 'checkpoint') setSelectedCheckpoint(null);
-    if (layer === 'incident') setSelectedIncident(null);
-    if (layer === 'fir') setSelectedFir(null);
+    if (layer === 'patrol' && selectedPatrol) closeAllDetails();
+    if (layer === 'hotspots' && selectedHotspot) closeAllDetails();
+    if (layer === 'cctv' && selectedCctv) closeAllDetails();
+    if (layer === 'checkpoint' && selectedCheckpoint) closeAllDetails();
+    if (layer === 'incident' && selectedIncident) closeAllDetails();
+    if (layer === 'fir' && selectedFir) closeAllDetails();
+    if (layer === 'station' && selectedStation) closeAllDetails();
   };
 
   // Start Call Simulation
   const triggerComms = (targetName: string) => {
     setCommsTarget(targetName);
   };
+
+  // Derived: is any detail panel currently open?
+  const hasActivePanel = !!(selectedPatrol || selectedHotspot || selectedCctv ||
+    selectedCheckpoint || selectedIncident || selectedFir || selectedStation);
 
   // ─── Real Bangalore Geographic Data (pixel-calibrated to Bengaluru_map.png 874×1122) ───
   // All x/y coordinates are pixel positions on the 874×1122 Bengaluru_map.png image.
@@ -882,7 +929,10 @@ export const CrimeMapScreen: React.FC = () => {
               <Text style={styles.mapHintText}>Tap any marker for detailed telemetry and operations</Text>
             </View>
 
-            {/* Map Canvas — Bengaluru_map.png with scrollable SVG overlay */}
+            {/* Map Canvas — Bengaluru_map.png with scrollable SVG overlay.
+                The map ALWAYS stays full size. Detail cards float ON TOP of it
+                as a bottom-sheet style popup (see detailPanelSection below),
+                they never push/shrink the map. */}
             <View style={styles.canvasFrame}>
               {/* Scrollable map area — nestedScrollEnabled for Android */}
               <ScrollView
@@ -945,7 +995,7 @@ export const CrimeMapScreen: React.FC = () => {
                               cy={hotspot.y}
                               r={hotspot.radius}
                               fill={grad}
-                              onPress={() => setSelectedHotspot(hotspot)}
+                              onPress={() => showDetail('hotspot', hotspot)}
                             />
                             {/* Solid center dot with white ring — clearly our data overlay */}
                             <Circle cx={hotspot.x} cy={hotspot.y} r="9" fill="white" opacity="0.85" />
@@ -954,7 +1004,7 @@ export const CrimeMapScreen: React.FC = () => {
                               cy={hotspot.y}
                               r="7"
                               fill={dotColor}
-                              onPress={() => setSelectedHotspot(hotspot)}
+                              onPress={() => showDetail('hotspot', hotspot)}
                             />
                             {/* Hotspot label badge — white pill so it's clearly our overlay */}
                             <Rect
@@ -1029,11 +1079,19 @@ export const CrimeMapScreen: React.FC = () => {
                         <G
                           key={asset.id}
                           onPress={() => {
-                            if (isPatrol) setSelectedPatrol(asset.details);
-                            else if (asset.type === 'cctv') setSelectedCctv(asset.details);
-                            else if (asset.type === 'checkpoint') setSelectedCheckpoint(asset.details);
-                            else if (asset.type === 'incident') setSelectedIncident(asset.details);
-                            else if (asset.type === 'fir') setSelectedFir(asset.details);
+                            if (isPatrol) showDetail('patrol', asset.details);
+                            else if (asset.type === 'cctv') showDetail('cctv', asset.details);
+                            else if (asset.type === 'checkpoint') showDetail('checkpoint', asset.details);
+                            else if (asset.type === 'incident') showDetail('incident', asset.details);
+                            else if (asset.type === 'fir') showDetail('fir', asset.details);
+                            else if (isStation) {
+                              showDetail('station', asset.details || {
+                                name: asset.label,
+                                inCharge: 'Station Duty Officer',
+                                staff: 'Active Duty Shift',
+                                phone: '+91-80-2845-0001',
+                              });
+                            }
                           }}
                         >
                           {/* Outer white ring — makes pin pop against any map background */}
@@ -1078,277 +1136,367 @@ export const CrimeMapScreen: React.FC = () => {
                   </Svg>
                 </View>
               </ScrollView>
+
+              {/* ─── Floating detail popup — overlays ON TOP of the map, bottom-sheet style ─── */}
+              {hasActivePanel && (
+                <View
+                  style={[styles.detailPanelSection, { bottom: Math.max(insets.bottom, 12) + 8 }]}
+                  pointerEvents="box-none"
+                >
+
+              {/* 1. Patrol Unit Telemetry Card */}
+              {selectedPatrol && (
+                <View style={styles.floatingOverlayCard}>
+                  <View style={styles.cardDragHandle} />
+                  <View style={styles.cardHeaderRow}>
+                    <Text style={styles.cardHeading}>🚔 Patrol Telemetry Live</Text>
+                    <TouchableOpacity onPress={closeAllDetails} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+                      <Text style={styles.closeBtnText}>✕</Text>
+                    </TouchableOpacity>
+                  </View>
+                  <ScrollView
+                    style={styles.cardScrollContainer}
+                    contentContainerStyle={styles.cardBody}
+                    nestedScrollEnabled={true}
+                    showsVerticalScrollIndicator={true}
+                    keyboardShouldPersistTaps="handled"
+                  >
+                    <View style={styles.telemetryRow}>
+                      <View style={styles.telemetryCol}>
+                        <Text style={styles.cardLabel}>PATROL ID</Text>
+                        <Text style={styles.cardValBold}>{selectedPatrol.patrolId}</Text>
+                      </View>
+                      <View style={styles.telemetryCol}>
+                        <Text style={styles.cardLabel}>VEHICLE NO</Text>
+                        <Text style={styles.cardValMono}>{selectedPatrol.vehicleNo}</Text>
+                      </View>
+                      <View style={styles.telemetryCol}>
+                        <Text style={styles.cardLabel}>STATUS</Text>
+                        <View style={[styles.statusPill, { backgroundColor: getStatusColor(selectedPatrol.status) + '15' }]}>
+                          <Text style={[styles.statusText, { color: getStatusColor(selectedPatrol.status) }]}>
+                            {selectedPatrol.status.toUpperCase()}
+                          </Text>
+                        </View>
+                      </View>
+                    </View>
+                    <View style={styles.telemetryRow}>
+                      <View style={{ flex: 1 }}>
+                        <Text style={styles.cardLabel}>DUTY OFFICER</Text>
+                        <Text style={styles.cardValText}>{selectedPatrol.dutyOfficer}</Text>
+                      </View>
+                      <View style={{ flex: 1 }}>
+                        <Text style={styles.cardLabel}>ASSIGNED OFFICERS</Text>
+                        <Text style={styles.cardValText}>{selectedPatrol.assignedCrew}</Text>
+                      </View>
+                    </View>
+                    <View style={styles.telemetryRow}>
+                      <View style={{ flex: 1 }}>
+                        <Text style={styles.cardLabel}>BEAT AREA / ROUTE</Text>
+                        <Text style={styles.cardValText}>{selectedPatrol.area}</Text>
+                      </View>
+                      <View style={{ flex: 1 }}>
+                        <Text style={styles.cardLabel}>SHIFT TIMINGS</Text>
+                        <Text style={styles.cardValText}>{selectedPatrol.shift}</Text>
+                      </View>
+                    </View>
+                    <View style={styles.telemetryRow}>
+                      <Text style={styles.cardLabel}>TELEMETRY LAST UPDATED: </Text>
+                      <Text style={styles.cardValMono}>{selectedPatrol.lastUpdated}</Text>
+                    </View>
+                    <View style={styles.cardActionsRow}>
+                      <TouchableOpacity
+                        style={[styles.actionBtn, highlightRouteId === selectedPatrol.patrolId && styles.actionBtnActive]}
+                        onPress={() => setHighlightRouteId(highlightRouteId === selectedPatrol.patrolId ? null : selectedPatrol.patrolId)}
+                      >
+                        <Text style={styles.actionBtnText}>
+                          {highlightRouteId === selectedPatrol.patrolId ? '✓ Route Highlighted' : '🗺 View Route'}
+                        </Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity style={[styles.actionBtn, styles.actionBtnNavy]} onPress={() => triggerComms(selectedPatrol.dutyOfficer)}>
+                        <Text style={styles.actionBtnTextWhite}>📞 Contact Officer</Text>
+                      </TouchableOpacity>
+                    </View>
+                  </ScrollView>
+                </View>
+              )}
+
+              {/* 2. Crime Hotspot Analytics Card */}
+              {selectedHotspot && (
+                <View style={styles.floatingOverlayCard}>
+                  <View style={styles.cardDragHandle} />
+                  <View style={styles.cardHeaderRow}>
+                    <Text style={styles.cardHeading}>🔴 Hotspot Analytics: {selectedHotspot.name}</Text>
+                    <TouchableOpacity onPress={closeAllDetails} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+                      <Text style={styles.closeBtnText}>✕</Text>
+                    </TouchableOpacity>
+                  </View>
+                  <ScrollView
+                    style={styles.cardScrollContainer}
+                    contentContainerStyle={styles.cardBody}
+                    nestedScrollEnabled={true}
+                    showsVerticalScrollIndicator={true}
+                    keyboardShouldPersistTaps="handled"
+                  >
+                    <View style={styles.telemetryRow}>
+                      <View style={styles.telemetryCol}>
+                        <Text style={styles.cardLabel}>CRITICAL RISK LEVEL</Text>
+                        <Text style={[styles.cardValBold, { color: selectedHotspot.severity === 'red' ? Colors.red : Colors.amber }]}>
+                          {selectedHotspot.riskLevel}
+                        </Text>
+                      </View>
+                      <View style={styles.telemetryCol}>
+                        <Text style={styles.cardLabel}>ACTIVE FIR COUNT</Text>
+                        <Text style={styles.cardValBold}>{selectedHotspot.firCount} cases</Text>
+                      </View>
+                    </View>
+                    <View style={styles.telemetryRow}>
+                      <Text style={styles.cardLabel}>CRIME TYPE RATIO</Text>
+                      <Text style={styles.cardValText}>{selectedHotspot.crimeTypes}</Text>
+                    </View>
+                    <View style={styles.incidentListBlock}>
+                      <Text style={styles.cardLabel}>RECENT REPORTS IN SECTOR</Text>
+                      {selectedHotspot.recentIncidents.map((inc, idx) => (
+                        <Text key={idx} style={styles.incidentBullet}>• {inc}</Text>
+                      ))}
+                    </View>
+                    <View style={styles.incidentListBlock}>
+                      <Text style={styles.cardLabel}>CLOSEST PATROL ASSETS</Text>
+                      {selectedHotspot.nearbyPatrols.map((p, idx) => (
+                        <Text key={idx} style={styles.incidentBullet}>📌 {p}</Text>
+                      ))}
+                    </View>
+                    <View style={styles.cardActionsRow}>
+                      <TouchableOpacity style={styles.actionBtn} onPress={() => triggerComms('Station Dispatch Coordinator')}>
+                        <Text style={styles.actionBtnText}>🚔 Dispatch Patrols</Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity style={[styles.actionBtn, styles.actionBtnNavy]} onPress={() => { closeAllDetails(); navigation.navigate('CaseFiles'); }}>
+                        <Text style={styles.actionBtnTextWhite}>📁 Open Sector Cases</Text>
+                      </TouchableOpacity>
+                    </View>
+                  </ScrollView>
+                </View>
+              )}
+
+              {/* 3. CCTV Feed Popup Card */}
+              {selectedCctv && (
+                <View style={styles.floatingOverlayCard}>
+                  <View style={styles.cardDragHandle} />
+                  <View style={styles.cardHeaderRow}>
+                    <Text style={styles.cardHeading}>📹 CCTV Live Feed: {selectedCctv.id}</Text>
+                    <TouchableOpacity onPress={closeAllDetails} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+                      <Text style={styles.closeBtnText}>✕</Text>
+                    </TouchableOpacity>
+                  </View>
+                  <ScrollView
+                    style={styles.cardScrollContainer}
+                    contentContainerStyle={styles.cardBody}
+                    nestedScrollEnabled={true}
+                    showsVerticalScrollIndicator={true}
+                    keyboardShouldPersistTaps="handled"
+                  >
+                    <Text style={styles.cardLabel}>LOCATION: {selectedCctv.area.toUpperCase()}</Text>
+                    <View style={styles.cctvStreamWindow}>
+                      {cctvFrame === 0 && <View style={styles.noiseLine1} />}
+                      {cctvFrame === 1 && <View style={styles.noiseLine2} />}
+                      {cctvFrame === 2 && <View style={styles.noiseLine3} />}
+                      {cctvFrame === 3 && <View style={styles.noiseLine4} />}
+                      <View style={styles.cctvOverlayTextRow}>
+                        <View style={styles.recBlinkRow}>
+                          <View style={styles.recDot} />
+                          <Text style={styles.recText}>REC</Text>
+                        </View>
+                        <Text style={styles.cctvTimestamp}>
+                          {new Date().toISOString().replace('T', ' ').substring(0, 19)} IST
+                        </Text>
+                      </View>
+                      <View style={styles.cctvWatermark}>
+                        <Text style={styles.watermarkText}>KSP SECURE INTERNAL FEED</Text>
+                        <Text style={styles.watermarkTextSub}>{selectedCctv.resolution} · {selectedCctv.rotation}</Text>
+                      </View>
+                    </View>
+                    <View style={styles.cardActionsRow}>
+                      <TouchableOpacity style={styles.actionBtn} onPress={() => triggerComms('Traffic Command Control')}>
+                        <Text style={styles.actionBtnText}>📞 Contact Traffic Control</Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity style={[styles.actionBtn, styles.actionBtnNavy]} onPress={closeAllDetails}>
+                        <Text style={styles.actionBtnTextWhite}>Close Feed</Text>
+                      </TouchableOpacity>
+                    </View>
+                  </ScrollView>
+                </View>
+              )}
+
+              {/* 4. Checkpoint Popup Card */}
+              {selectedCheckpoint && (
+                <View style={styles.floatingOverlayCard}>
+                  <View style={styles.cardDragHandle} />
+                  <View style={styles.cardHeaderRow}>
+                    <Text style={styles.cardHeading}>🛑 Checkpoint Detail: {selectedCheckpoint.name}</Text>
+                    <TouchableOpacity onPress={closeAllDetails} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+                      <Text style={styles.closeBtnText}>✕</Text>
+                    </TouchableOpacity>
+                  </View>
+                  <ScrollView
+                    style={styles.cardScrollContainer}
+                    contentContainerStyle={styles.cardBody}
+                    nestedScrollEnabled={true}
+                    showsVerticalScrollIndicator={true}
+                    keyboardShouldPersistTaps="handled"
+                  >
+                    <View style={styles.telemetryRow}>
+                      <View style={styles.telemetryCol}>
+                        <Text style={styles.cardLabel}>OFFICER IN CHARGE</Text>
+                        <Text style={styles.cardValBold}>{selectedCheckpoint.dutyOfficer}</Text>
+                      </View>
+                      <View style={styles.telemetryCol}>
+                        <Text style={styles.cardLabel}>STATUS</Text>
+                        <View style={[styles.statusPill, { backgroundColor: getStatusColor(selectedCheckpoint.status) + '15' }]}>
+                          <Text style={[styles.statusText, { color: getStatusColor(selectedCheckpoint.status) }]}>
+                            {selectedCheckpoint.status.toUpperCase()}
+                          </Text>
+                        </View>
+                      </View>
+                    </View>
+                    <View style={styles.telemetryRow}>
+                      <View style={styles.telemetryCol}>
+                        <Text style={styles.cardLabel}>TOTAL VEHICLES SCREENED</Text>
+                        <Text style={styles.cardValBold}>{selectedCheckpoint.vehiclesScreened} today</Text>
+                      </View>
+                    </View>
+                    <View style={styles.cardActionsRow}>
+                      <TouchableOpacity style={styles.actionBtn} onPress={() => triggerComms(selectedCheckpoint.dutyOfficer)}>
+                        <Text style={styles.actionBtnText}>📞 Contact Checkpoint</Text>
+                      </TouchableOpacity>
+                    </View>
+                  </ScrollView>
+                </View>
+              )}
+
+              {/* 5. Incident Card */}
+              {selectedIncident && (
+                <View style={styles.floatingOverlayCard}>
+                  <View style={styles.cardDragHandle} />
+                  <View style={styles.cardHeaderRow}>
+                    <Text style={styles.cardHeading}>⚠️ Active Incident Report</Text>
+                    <TouchableOpacity onPress={closeAllDetails} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+                      <Text style={styles.closeBtnText}>✕</Text>
+                    </TouchableOpacity>
+                  </View>
+                  <ScrollView
+                    style={styles.cardScrollContainer}
+                    contentContainerStyle={styles.cardBody}
+                    nestedScrollEnabled={true}
+                    showsVerticalScrollIndicator={true}
+                    keyboardShouldPersistTaps="handled"
+                  >
+                    <Text style={[styles.cardValBold, { color: Colors.red, marginBottom: 8 }]}>{selectedIncident.title}</Text>
+                    <View style={styles.telemetryRow}>
+                      <View style={styles.telemetryCol}>
+                        <Text style={styles.cardLabel}>REPORTER</Text>
+                        <Text style={styles.cardValText}>{selectedIncident.reporter}</Text>
+                      </View>
+                      <View style={styles.telemetryCol}>
+                        <Text style={styles.cardLabel}>TIME FILED</Text>
+                        <Text style={styles.cardValMono}>{selectedIncident.time}</Text>
+                      </View>
+                    </View>
+                    <View style={styles.incidentListBlock}>
+                      <Text style={styles.cardLabel}>INCIDENT REPORT DETAILS</Text>
+                      <Text style={styles.cardValText}>{selectedIncident.details}</Text>
+                    </View>
+                    <View style={styles.cardActionsRow}>
+                      <TouchableOpacity style={styles.actionBtn} onPress={() => triggerComms('Command Dispatch Center')}>
+                        <Text style={styles.actionBtnText}>🚔 Dispatch Nearest Unit</Text>
+                      </TouchableOpacity>
+                    </View>
+                  </ScrollView>
+                </View>
+              )}
+
+              {/* 6. FIR Case Card */}
+              {selectedFir && (
+                <View style={styles.floatingOverlayCard}>
+                  <View style={styles.cardDragHandle} />
+                  <View style={styles.cardHeaderRow}>
+                    <Text style={styles.cardHeading}>📁 Case File Quickview</Text>
+                    <TouchableOpacity onPress={closeAllDetails} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+                      <Text style={styles.closeBtnText}>✕</Text>
+                    </TouchableOpacity>
+                  </View>
+                  <ScrollView
+                    style={styles.cardScrollContainer}
+                    contentContainerStyle={styles.cardBody}
+                    nestedScrollEnabled={true}
+                    showsVerticalScrollIndicator={true}
+                    keyboardShouldPersistTaps="handled"
+                  >
+                    <Text style={styles.cardValBold}>{selectedFir.firNo}: {selectedFir.title}</Text>
+                    <View style={styles.telemetryRow}>
+                      <View style={styles.telemetryCol}>
+                        <Text style={styles.cardLabel}>INVESTIGATING OFFICER</Text>
+                        <Text style={styles.cardValText}>{selectedFir.officer}</Text>
+                      </View>
+                      <View style={styles.telemetryCol}>
+                        <Text style={styles.cardLabel}>FILED DATE</Text>
+                        <Text style={styles.cardValMono}>{selectedFir.date}</Text>
+                      </View>
+                    </View>
+                    <View style={styles.telemetryRow}>
+                      <Text style={styles.cardLabel}>COMPLAINANT: </Text>
+                      <Text style={styles.cardValText}>{selectedFir.complainant}</Text>
+                    </View>
+                    <View style={styles.cardActionsRow}>
+                      <TouchableOpacity style={[styles.actionBtn, styles.actionBtnNavy]} onPress={() => handleViewCase(selectedFir.firNo)}>
+                        <Text style={styles.actionBtnTextWhite}>📁 Open Case Files</Text>
+                      </TouchableOpacity>
+                    </View>
+                  </ScrollView>
+                </View>
+              )}
+
+              {/* 7. Police Station / HQ Card */}
+              {selectedStation && (
+                <View style={styles.floatingOverlayCard}>
+                  <View style={styles.cardDragHandle} />
+                  <View style={styles.cardHeaderRow}>
+                    <Text style={styles.cardHeading}>🏛️ Station Telemetry Live</Text>
+                    <TouchableOpacity onPress={closeAllDetails} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+                      <Text style={styles.closeBtnText}>✕</Text>
+                    </TouchableOpacity>
+                  </View>
+                  <ScrollView
+                    style={styles.cardScrollContainer}
+                    contentContainerStyle={styles.cardBody}
+                    nestedScrollEnabled={true}
+                    showsVerticalScrollIndicator={true}
+                    keyboardShouldPersistTaps="handled"
+                  >
+                    <Text style={styles.cardValBold}>{selectedStation.name}</Text>
+                    <View style={styles.telemetryRow}>
+                      <View style={styles.telemetryCol}>
+                        <Text style={styles.cardLabel}>OFFICER IN CHARGE</Text>
+                        <Text style={styles.cardValText}>{selectedStation.inCharge}</Text>
+                      </View>
+                      <View style={styles.telemetryCol}>
+                        <Text style={styles.cardLabel}>STRENGTH / STAFF</Text>
+                        <Text style={styles.cardValText}>{selectedStation.staff}</Text>
+                      </View>
+                    </View>
+                    <View style={styles.telemetryRow}>
+                      <Text style={styles.cardLabel}>TELEPHONE: </Text>
+                      <Text style={styles.cardValMono}>{selectedStation.phone}</Text>
+                    </View>
+                    <View style={styles.cardActionsRow}>
+                      <TouchableOpacity style={[styles.actionBtn, styles.actionBtnNavy]} onPress={() => triggerComms(selectedStation.inCharge)}>
+                        <Text style={styles.actionBtnTextWhite}>📞 Secure Link</Text>
+                      </TouchableOpacity>
+                    </View>
+                  </ScrollView>
+                </View>
+              )}
+              </View>
+              )}
             </View>
-
-            {/* ─── Floating info cards (rendered below the map, scroll to view) ── */}
-
-            {/* 1. Patrol Unit Telemetry Card */}
-            {selectedPatrol && (
-              <View style={styles.floatingOverlayCard}>
-                <View style={styles.cardHeaderRow}>
-                  <Text style={styles.cardHeading}>🚔 Patrol Telemetry Live</Text>
-                  <TouchableOpacity onPress={() => { setSelectedPatrol(null); setHighlightRouteId(null); }}>
-                    <Text style={styles.closeBtnText}>✕</Text>
-                  </TouchableOpacity>
-                </View>
-                <View style={styles.cardBody}>
-                  <View style={styles.telemetryRow}>
-                    <View style={styles.telemetryCol}>
-                      <Text style={styles.cardLabel}>PATROL ID</Text>
-                      <Text style={styles.cardValBold}>{selectedPatrol.patrolId}</Text>
-                    </View>
-                    <View style={styles.telemetryCol}>
-                      <Text style={styles.cardLabel}>VEHICLE NO</Text>
-                      <Text style={styles.cardValMono}>{selectedPatrol.vehicleNo}</Text>
-                    </View>
-                    <View style={styles.telemetryCol}>
-                      <Text style={styles.cardLabel}>STATUS</Text>
-                      <View style={[styles.statusPill, { backgroundColor: getStatusColor(selectedPatrol.status) + '15' }]}>
-                        <Text style={[styles.statusText, { color: getStatusColor(selectedPatrol.status) }]}>
-                          {selectedPatrol.status.toUpperCase()}
-                        </Text>
-                      </View>
-                    </View>
-                  </View>
-                  <View style={styles.telemetryRow}>
-                    <View style={{ flex: 1 }}>
-                      <Text style={styles.cardLabel}>DUTY OFFICER</Text>
-                      <Text style={styles.cardValText}>{selectedPatrol.dutyOfficer}</Text>
-                    </View>
-                    <View style={{ flex: 1 }}>
-                      <Text style={styles.cardLabel}>ASSIGNED OFFICERS</Text>
-                      <Text style={styles.cardValText}>{selectedPatrol.assignedCrew}</Text>
-                    </View>
-                  </View>
-                  <View style={styles.telemetryRow}>
-                    <View style={{ flex: 1 }}>
-                      <Text style={styles.cardLabel}>BEAT AREA / ROUTE</Text>
-                      <Text style={styles.cardValText}>{selectedPatrol.area}</Text>
-                    </View>
-                    <View style={{ flex: 1 }}>
-                      <Text style={styles.cardLabel}>SHIFT TIMINGS</Text>
-                      <Text style={styles.cardValText}>{selectedPatrol.shift}</Text>
-                    </View>
-                  </View>
-                  <View style={styles.telemetryRow}>
-                    <Text style={styles.cardLabel}>TELEMETRY LAST UPDATED: </Text>
-                    <Text style={styles.cardValMono}>{selectedPatrol.lastUpdated}</Text>
-                  </View>
-                  <View style={styles.cardActionsRow}>
-                    <TouchableOpacity
-                      style={[styles.actionBtn, highlightRouteId === selectedPatrol.patrolId && styles.actionBtnActive]}
-                      onPress={() => setHighlightRouteId(highlightRouteId === selectedPatrol.patrolId ? null : selectedPatrol.patrolId)}
-                    >
-                      <Text style={styles.actionBtnText}>
-                        {highlightRouteId === selectedPatrol.patrolId ? '✓ Route Highlighted' : '🗺 View Route'}
-                      </Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity style={[styles.actionBtn, styles.actionBtnNavy]} onPress={() => triggerComms(selectedPatrol.dutyOfficer)}>
-                      <Text style={styles.actionBtnTextWhite}>📞 Contact Officer</Text>
-                    </TouchableOpacity>
-                  </View>
-                </View>
-              </View>
-            )}
-
-            {/* 2. Crime Hotspot Analytics Card */}
-            {selectedHotspot && (
-              <View style={styles.floatingOverlayCard}>
-                <View style={styles.cardHeaderRow}>
-                  <Text style={styles.cardHeading}>🔴 Hotspot Analytics: {selectedHotspot.name}</Text>
-                  <TouchableOpacity onPress={() => setSelectedHotspot(null)}>
-                    <Text style={styles.closeBtnText}>✕</Text>
-                  </TouchableOpacity>
-                </View>
-                <View style={styles.cardBody}>
-                  <View style={styles.telemetryRow}>
-                    <View style={styles.telemetryCol}>
-                      <Text style={styles.cardLabel}>CRITICAL RISK LEVEL</Text>
-                      <Text style={[styles.cardValBold, { color: selectedHotspot.severity === 'red' ? Colors.red : Colors.amber }]}>
-                        {selectedHotspot.riskLevel}
-                      </Text>
-                    </View>
-                    <View style={styles.telemetryCol}>
-                      <Text style={styles.cardLabel}>ACTIVE FIR COUNT</Text>
-                      <Text style={styles.cardValBold}>{selectedHotspot.firCount} cases</Text>
-                    </View>
-                  </View>
-                  <View style={styles.telemetryRow}>
-                    <Text style={styles.cardLabel}>CRIME TYPE RATIO</Text>
-                    <Text style={styles.cardValText}>{selectedHotspot.crimeTypes}</Text>
-                  </View>
-                  <View style={styles.incidentListBlock}>
-                    <Text style={styles.cardLabel}>RECENT REPORTS IN SECTOR</Text>
-                    {selectedHotspot.recentIncidents.map((inc, idx) => (
-                      <Text key={idx} style={styles.incidentBullet}>• {inc}</Text>
-                    ))}
-                  </View>
-                  <View style={styles.incidentListBlock}>
-                    <Text style={styles.cardLabel}>CLOSEST PATROL ASSETS</Text>
-                    {selectedHotspot.nearbyPatrols.map((p, idx) => (
-                      <Text key={idx} style={styles.incidentBullet}>📌 {p}</Text>
-                    ))}
-                  </View>
-                  <View style={styles.cardActionsRow}>
-                    <TouchableOpacity style={styles.actionBtn} onPress={() => triggerComms('Station Dispatch Coordinator')}>
-                      <Text style={styles.actionBtnText}>🚔 Dispatch Patrols</Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity style={[styles.actionBtn, styles.actionBtnNavy]} onPress={() => { setSelectedHotspot(null); navigation.navigate('CaseFiles'); }}>
-                      <Text style={styles.actionBtnTextWhite}>📁 Open Sector Cases</Text>
-                    </TouchableOpacity>
-                  </View>
-                </View>
-              </View>
-            )}
-
-            {/* 3. CCTV Feed Popup Card */}
-            {selectedCctv && (
-              <View style={styles.floatingOverlayCard}>
-                <View style={styles.cardHeaderRow}>
-                  <Text style={styles.cardHeading}>📹 CCTV Live Feed: {selectedCctv.id}</Text>
-                  <TouchableOpacity onPress={() => setSelectedCctv(null)}>
-                    <Text style={styles.closeBtnText}>✕</Text>
-                  </TouchableOpacity>
-                </View>
-                <View style={styles.cardBody}>
-                  <Text style={styles.cardLabel}>LOCATION: {selectedCctv.area.toUpperCase()}</Text>
-                  <View style={styles.cctvStreamWindow}>
-                    {cctvFrame === 0 && <View style={styles.noiseLine1} />}
-                    {cctvFrame === 1 && <View style={styles.noiseLine2} />}
-                    {cctvFrame === 2 && <View style={styles.noiseLine3} />}
-                    {cctvFrame === 3 && <View style={styles.noiseLine4} />}
-                    <View style={styles.cctvOverlayTextRow}>
-                      <View style={styles.recBlinkRow}>
-                        <View style={styles.recDot} />
-                        <Text style={styles.recText}>REC</Text>
-                      </View>
-                      <Text style={styles.cctvTimestamp}>
-                        {new Date().toISOString().replace('T', ' ').substring(0, 19)} IST
-                      </Text>
-                    </View>
-                    <View style={styles.cctvWatermark}>
-                      <Text style={styles.watermarkText}>KSP SECURE INTERNAL FEED</Text>
-                      <Text style={styles.watermarkTextSub}>{selectedCctv.resolution} · {selectedCctv.rotation}</Text>
-                    </View>
-                  </View>
-                  <View style={styles.cardActionsRow}>
-                    <TouchableOpacity style={styles.actionBtn} onPress={() => triggerComms('Traffic Command Control')}>
-                      <Text style={styles.actionBtnText}>📞 Contact Traffic Control</Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity style={[styles.actionBtn, styles.actionBtnNavy]} onPress={() => setSelectedCctv(null)}>
-                      <Text style={styles.actionBtnTextWhite}>Close Feed</Text>
-                    </TouchableOpacity>
-                  </View>
-                </View>
-              </View>
-            )}
-
-            {/* 4. Checkpoint Popup Card */}
-            {selectedCheckpoint && (
-              <View style={styles.floatingOverlayCard}>
-                <View style={styles.cardHeaderRow}>
-                  <Text style={styles.cardHeading}>🛑 Checkpoint Detail: {selectedCheckpoint.name}</Text>
-                  <TouchableOpacity onPress={() => setSelectedCheckpoint(null)}>
-                    <Text style={styles.closeBtnText}>✕</Text>
-                  </TouchableOpacity>
-                </View>
-                <View style={styles.cardBody}>
-                  <View style={styles.telemetryRow}>
-                    <View style={styles.telemetryCol}>
-                      <Text style={styles.cardLabel}>OFFICER IN CHARGE</Text>
-                      <Text style={styles.cardValBold}>{selectedCheckpoint.dutyOfficer}</Text>
-                    </View>
-                    <View style={styles.telemetryCol}>
-                      <Text style={styles.cardLabel}>STATUS</Text>
-                      <View style={[styles.statusPill, { backgroundColor: getStatusColor(selectedCheckpoint.status) + '15' }]}>
-                        <Text style={[styles.statusText, { color: getStatusColor(selectedCheckpoint.status) }]}>
-                          {selectedCheckpoint.status.toUpperCase()}
-                        </Text>
-                      </View>
-                    </View>
-                  </View>
-                  <View style={styles.telemetryRow}>
-                    <View style={styles.telemetryCol}>
-                      <Text style={styles.cardLabel}>TOTAL VEHICLES SCREENED</Text>
-                      <Text style={styles.cardValBold}>{selectedCheckpoint.vehiclesScreened} today</Text>
-                    </View>
-                  </View>
-                  <View style={styles.cardActionsRow}>
-                    <TouchableOpacity style={styles.actionBtn} onPress={() => triggerComms(selectedCheckpoint.dutyOfficer)}>
-                      <Text style={styles.actionBtnText}>📞 Contact Checkpoint</Text>
-                    </TouchableOpacity>
-                  </View>
-                </View>
-              </View>
-            )}
-
-            {/* 5. Incident Card */}
-            {selectedIncident && (
-              <View style={styles.floatingOverlayCard}>
-                <View style={styles.cardHeaderRow}>
-                  <Text style={styles.cardHeading}>⚠️ Active Incident Report</Text>
-                  <TouchableOpacity onPress={() => setSelectedIncident(null)}>
-                    <Text style={styles.closeBtnText}>✕</Text>
-                  </TouchableOpacity>
-                </View>
-                <View style={styles.cardBody}>
-                  <Text style={[styles.cardValBold, { color: Colors.red, marginBottom: 8 }]}>{selectedIncident.title}</Text>
-                  <View style={styles.telemetryRow}>
-                    <View style={styles.telemetryCol}>
-                      <Text style={styles.cardLabel}>REPORTER</Text>
-                      <Text style={styles.cardValText}>{selectedIncident.reporter}</Text>
-                    </View>
-                    <View style={styles.telemetryCol}>
-                      <Text style={styles.cardLabel}>TIME FILED</Text>
-                      <Text style={styles.cardValMono}>{selectedIncident.time}</Text>
-                    </View>
-                  </View>
-                  <View style={styles.incidentListBlock}>
-                    <Text style={styles.cardLabel}>INCIDENT REPORT DETAILS</Text>
-                    <Text style={styles.cardValText}>{selectedIncident.details}</Text>
-                  </View>
-                  <View style={styles.cardActionsRow}>
-                    <TouchableOpacity style={styles.actionBtn} onPress={() => triggerComms('Command Dispatch Center')}>
-                      <Text style={styles.actionBtnText}>🚔 Dispatch Nearest Unit</Text>
-                    </TouchableOpacity>
-                  </View>
-                </View>
-              </View>
-            )}
-
-            {/* 6. FIR Case Card */}
-            {selectedFir && (
-              <View style={styles.floatingOverlayCard}>
-                <View style={styles.cardHeaderRow}>
-                  <Text style={styles.cardHeading}>📁 Case File Quickview</Text>
-                  <TouchableOpacity onPress={() => setSelectedFir(null)}>
-                    <Text style={styles.closeBtnText}>✕</Text>
-                  </TouchableOpacity>
-                </View>
-                <View style={styles.cardBody}>
-                  <Text style={styles.cardValBold}>{selectedFir.firNo}: {selectedFir.title}</Text>
-                  <View style={styles.telemetryRow}>
-                    <View style={styles.telemetryCol}>
-                      <Text style={styles.cardLabel}>INVESTIGATING OFFICER</Text>
-                      <Text style={styles.cardValText}>{selectedFir.officer}</Text>
-                    </View>
-                    <View style={styles.telemetryCol}>
-                      <Text style={styles.cardLabel}>FILED DATE</Text>
-                      <Text style={styles.cardValMono}>{selectedFir.date}</Text>
-                    </View>
-                  </View>
-                  <View style={styles.telemetryRow}>
-                    <Text style={styles.cardLabel}>COMPLAINANT: </Text>
-                    <Text style={styles.cardValText}>{selectedFir.complainant}</Text>
-                  </View>
-                  <View style={styles.cardActionsRow}>
-                    <TouchableOpacity style={[styles.actionBtn, styles.actionBtnNavy]} onPress={() => handleViewCase(selectedFir.firNo)}>
-                      <Text style={styles.actionBtnTextWhite}>📁 Open Case Files</Text>
-                    </TouchableOpacity>
-                  </View>
-                </View>
-              </View>
-            )}
           </View>
         </View>
       </View>
@@ -1629,7 +1777,10 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: Colors.line,
     borderRadius: 8,
+    // The detail popup is positioned absolutely INSIDE canvasFrame, so this
+    // container itself can safely clip to its rounded corners.
     overflow: 'hidden',
+    position: 'relative',
   },
   mapHeaderRow: {
     flexDirection: 'row',
@@ -1670,11 +1821,13 @@ const styles = StyleSheet.create({
     color: Colors.gray,
   },
   canvasFrame: {
+    // The map ALWAYS fills all available space — it never shrinks.
+    // The detail popup floats on top of it as an absolutely-positioned
+    // bottom sheet (see detailPanelSection), exactly like a native maps app.
     flex: 1,
+    position: 'relative',
     overflow: 'hidden',
     backgroundColor: '#f0ede6',
-    borderBottomWidth: 1,
-    borderBottomColor: Colors.line,
   },
   mapScrollView: {
     flex: 1,
@@ -1705,19 +1858,46 @@ const styles = StyleSheet.create({
     height: 620,
     backgroundColor: Colors.mapBg,
   },
+  // Bottom-sheet style popup that floats ON TOP of the map (canvasFrame).
+  // Positioned absolutely so the map behind it stays full size and untouched.
+  detailPanelSection: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: 0,
+    // Cap how tall the popup can get — content scrolls internally beyond this.
+    maxHeight: Math.round(Dimensions.get('window').height * 0.42),
+    zIndex: 15,
+  },
   floatingOverlayCard: {
-    marginHorizontal: 12,
-    marginTop: 10,
     backgroundColor: Colors.card,
+    borderTopLeftRadius: 16,
+    borderTopRightRadius: 16,
     borderWidth: 1,
     borderColor: Colors.line,
-    borderRadius: 8,
-    padding: 12,
+    paddingHorizontal: 14,
+    paddingTop: 8,
+    // Extra bottom padding so content clears the device's safe area / home indicator.
+    paddingBottom: 4,
     shadowColor: Colors.inkNavy,
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 4,
+    shadowOffset: { width: 0, height: -4 },
+    shadowOpacity: 0.18,
+    shadowRadius: 12,
+    elevation: 14,
+    maxHeight: Math.round(Dimensions.get('window').height * 0.42),
+  },
+  cardDragHandle: {
+    alignSelf: 'center',
+    width: 36,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: Colors.line,
+    marginBottom: 6,
+  },
+  cardScrollContainer: {
+    // Bounded by floatingOverlayCard's maxHeight above, so this can grow to
+    // fit short content or scroll internally for long content.
+    flexGrow: 0,
   },
   cardHeaderRow: {
     flexDirection: 'row',
@@ -1741,6 +1921,8 @@ const styles = StyleSheet.create({
   },
   cardBody: {
     gap: 8,
+    // Ensure the last row is never clipped beneath the card's bottom edge
+    paddingBottom: 20,
   },
   telemetryRow: {
     flexDirection: 'row',
