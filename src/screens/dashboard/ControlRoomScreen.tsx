@@ -6,15 +6,18 @@
 import React, { useState, useRef, useEffect } from 'react';
 import {
   View, Text, ScrollView, StyleSheet, Pressable,
-  Image, Animated, RefreshControl, LayoutChangeEvent,
+  Image, Animated, RefreshControl, LayoutChangeEvent, Dimensions,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Colors } from '../../constants/colors';
 import { FontFamily, FontSize } from '../../constants/typography';
 import { AppHeader } from '../../components/layout/AppHeader';
 import { CaseSummaryChart } from '../../components/charts/CaseSummaryChart';
+import { useAuthStore } from '../../store/authStore';
+import { hasPermission } from '../../utils/rbac';
 import {
   MOCK_STATS,
+  MOCK_COMMISSIONER_STATS,
   MOCK_LIVE_FEED,
 } from '../../constants/mockData';
 import type { DrawerNavigationProp } from '@react-navigation/drawer';
@@ -287,11 +290,30 @@ const statStyles = StyleSheet.create({
 // ── Main Screen ───────────────────────────────────────────────────────────────
 export const ControlRoomScreen: React.FC<Props> = ({ navigation }) => {
   const insets = useSafeAreaInsets();
+  const { officer } = useAuthStore();
   const [refreshing, setRefreshing] = useState(false);
   const [bodyW, setBodyW] = useState(0);
+  const [feedSearch, setFeedSearch] = useState('');
 
   const headerFade = useRef(new Animated.Value(0)).current;
   const contentSlide = useRef(new Animated.Value(16)).current;
+
+  const isComm = officer?.role === 'commissioner';
+  const canGenerateFIR = hasPermission(officer?.role, 'GENERATE_FIR');
+  const statsList = isComm ? MOCK_COMMISSIONER_STATS : MOCK_STATS;
+
+  // Responsive stat card sizing
+  const cardCols = isComm ? (bodyW >= 600 ? 3 : bodyW >= 380 ? 2 : 1) : (bodyW >= 500 ? 2 : 1);
+  const cardGap = 12;
+  const cardBasis = bodyW > 0 ? (bodyW - 36 - cardGap * (cardCols - 1)) / cardCols : 130;
+
+  const filteredFeed = feedSearch.trim()
+    ? MOCK_LIVE_FEED.filter(
+        (item) =>
+          item.title.toLowerCase().includes(feedSearch.toLowerCase()) ||
+          item.detail.toLowerCase().includes(feedSearch.toLowerCase())
+      )
+    : MOCK_LIVE_FEED;
 
   useEffect(() => {
     Animated.parallel([
@@ -310,12 +332,16 @@ export const ControlRoomScreen: React.FC<Props> = ({ navigation }) => {
 
   return (
     <View style={[styles.screen, { paddingTop: insets.top }]}>
-      <AppHeader onMenuPress={() => navigation.openDrawer()} />
+      <AppHeader
+        onMenuPress={() => navigation.openDrawer()}
+        searchQuery={feedSearch}
+        onSearchChange={setFeedSearch}
+      />
 
       <ScrollView
         style={styles.scroll}
-        contentContainerStyle={styles.content}
-        showsVerticalScrollIndicator={false}
+        contentContainerStyle={[styles.content, { paddingBottom: insets.bottom + 48, flexGrow: 1 }]}
+        showsVerticalScrollIndicator={true}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={Colors.red} />}
         onLayout={(e: LayoutChangeEvent) => setBodyW(e.nativeEvent.layout.width)}
       >
@@ -327,10 +353,14 @@ export const ControlRoomScreen: React.FC<Props> = ({ navigation }) => {
           ]}
         >
           <View style={styles.pageHeadLeft}>
-            <Text style={styles.eyebrow}>Control Room · Whitefield Sub-Division</Text>
-            <Text style={styles.heading}>Good afternoon, Inspector.</Text>
+            <Text style={styles.eyebrow}>
+              {isComm ? 'Commissioner Control Office · City Police HQ' : 'Control Room · Whitefield Sub-Division'}
+            </Text>
+            <Text style={styles.heading}>Good afternoon, {officer?.name || 'Officer'}.</Text>
             <Text style={styles.subtitle}>
-              Here's where things stand across the sub-division right now.
+              {isComm
+                ? 'Executive overview across district police stations and crime intelligence.'
+                : "Here's where things stand across the sub-division right now."}
             </Text>
           </View>
           <Image
@@ -360,18 +390,18 @@ export const ControlRoomScreen: React.FC<Props> = ({ navigation }) => {
             </View>
 
             <View style={styles.feedList}>
-              {MOCK_LIVE_FEED.map((item, i) => (
+              {filteredFeed.map((item, i) => (
                 <FeedItem
                   key={item.id}
                   item={item}
-                  isLast={i === MOCK_LIVE_FEED.length - 1}
+                  isLast={i === filteredFeed.length - 1}
                   index={i}
                 />
               ))}
             </View>
           </View>
 
-          {/* File a Case ────────────────────────────────────────────── */}
+          {/* File a Case / Duty Action ───────────────────────────────── */}
           <View style={[styles.card, styles.fileCard, isWide && { flex: 2 }]}>
             <View style={styles.fileCardInner}>
               {/* Emblem */}
@@ -387,24 +417,29 @@ export const ControlRoomScreen: React.FC<Props> = ({ navigation }) => {
               {/* Content */}
               <View style={styles.fileCardContent}>
                 <Text style={styles.fileCardEyebrow}>KARNATAKA STATE POLICE</Text>
-                <Text style={styles.fileCardTitle}>File a Case</Text>
+                <Text style={styles.fileCardTitle}>{canGenerateFIR ? 'File a Case' : 'Field Operations'}</Text>
                 <Text style={styles.fileCardDesc}>
-                  Register a new FIR or add a complaint into the CrimeSphere system.
+                  {canGenerateFIR
+                    ? 'Register a new FIR or add a complaint into the CrimeSphere system.'
+                    : 'Record field evidence, capture statements, and update assigned duty tasks.'}
                 </Text>
 
                 <Pressable
+                  onPress={() => navigation.navigate('CaseFiles')}
                   style={({ pressed }) => [styles.fileBtn, pressed && styles.fileBtnPressed]}
-                  accessibilityLabel="Start new FIR"
+                  accessibilityLabel={canGenerateFIR ? 'Start new FIR' : 'Field Operations'}
                 >
-                  <Text style={styles.fileBtnText}>+ New FIR</Text>
+                  <Text style={styles.fileBtnText}>
+                    {canGenerateFIR ? '+ New FIR' : '📁 View Assigned Tasks'}
+                  </Text>
                 </Pressable>
 
                 <View style={styles.fileQuickRow}>
-                  <Pressable style={styles.fileQuickBtn}>
-                    <Text style={styles.fileQuickText}>📋 Quick complaint</Text>
+                  <Pressable style={styles.fileQuickBtn} onPress={() => navigation.navigate('CaseFiles')}>
+                    <Text style={styles.fileQuickText}>📋 Complaint list</Text>
                   </Pressable>
-                  <Pressable style={styles.fileQuickBtn}>
-                    <Text style={styles.fileQuickText}>📎 Import FIR</Text>
+                  <Pressable style={styles.fileQuickBtn} onPress={() => navigation.navigate('DutyNotebook')}>
+                    <Text style={styles.fileQuickText}>💬 Duty log</Text>
                   </Pressable>
                 </View>
               </View>
@@ -424,20 +459,20 @@ export const ControlRoomScreen: React.FC<Props> = ({ navigation }) => {
               </Text>
             </View>
             <View style={[styles.liveCountBadge, { backgroundColor: Colors.paperDim }]}>
-              <Text style={styles.liveCountText}>27 total open</Text>
+              <Text style={styles.liveCountText}>{isComm ? '142 total active' : '27 total open'}</Text>
             </View>
           </View>
           <CaseSummaryChart />
         </Animated.View>
 
-        {/* ── Row 3: 4 Stat cards ─────────────────────────────────── */}
+        {/* ── Row 3: Stat cards (Commissioner 9 cards or Standard 4 cards) ──────── */}
         <Animated.View
           style={[
             styles.statRow,
-            { flexDirection: isWide ? 'row' : 'row', flexWrap: 'wrap', transform: [{ translateY: contentSlide }] },
+            { transform: [{ translateY: contentSlide }] },
           ]}
         >
-          {MOCK_STATS.map((stat, i) => (
+          {statsList.map((stat, i) => (
             <DashStatCard key={stat.id} stat={stat} index={i} />
           ))}
         </Animated.View>
@@ -452,9 +487,13 @@ export const ControlRoomScreen: React.FC<Props> = ({ navigation }) => {
 const styles = StyleSheet.create({
   screen: {
     flex: 1,
+    minHeight: 0,
     backgroundColor: Colors.paper,
   },
-  scroll: { flex: 1 },
+  scroll: {
+    flex: 1,
+    minHeight: 0,
+  },
   content: {
     padding: 18,
     gap: 16,
@@ -663,6 +702,8 @@ const styles = StyleSheet.create({
 
   // Stat row
   statRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
     gap: 12,
   },
 });

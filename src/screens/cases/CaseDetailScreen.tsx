@@ -11,12 +11,22 @@ import Svg, { Path, Circle, Defs, RadialGradient as SvgRadialGradient, Stop } fr
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { StackNavigationProp } from '@react-navigation/stack';
 import type { RouteProp } from '@react-navigation/native';
-import type { CaseStackParamList } from '../../types/navigation';
 import { Colors } from '../../constants/colors';
 import { FontFamily, FontSize } from '../../constants/typography';
 import { useCaseStore } from '../../store/caseStore';
-import { EmptyState } from '../../components/ui/EmptyState';
+import { useAuthStore } from '../../store/authStore';
+import { hasPermission } from '../../utils/rbac';
 import type { Priority } from '../../types';
+import type { CaseStackParamList } from '../../types/navigation';
+
+// ─── Inline EmptyState ────────────────────────────────────────────────────────
+const EmptyState: React.FC<{ icon: string; title: string; subtitle: string }> = ({ icon, title, subtitle }) => (
+  <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', gap: 8, padding: 32 }}>
+    <Text style={{ fontSize: 48 }}>{icon}</Text>
+    <Text style={{ fontFamily: FontFamily.display, fontSize: FontSize['2xl'], color: Colors.inkNavy }}>{title}</Text>
+    <Text style={{ fontFamily: FontFamily.body, fontSize: FontSize.md, color: Colors.gray, textAlign: 'center' }}>{subtitle}</Text>
+  </View>
+);
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 type Props = {
@@ -247,8 +257,19 @@ const DraggablePopup: React.FC<PopupProps> = ({
 export const CaseDetailScreen: React.FC<Props> = ({ navigation, route }) => {
   const { caseId } = route.params;
   const getCaseById = useCaseStore((s) => s.getCaseById);
+  const deleteCase = useCaseStore((s) => s.deleteCase);
   const caseItem = getCaseById(caseId);
   const insets = useSafeAreaInsets();
+  const { officer } = useAuthStore();
+  const role = officer?.role;
+
+  const canDeleteCase = hasPermission(role, 'DELETE_CASES');
+  const canGenerateFIR = hasPermission(role, 'GENERATE_FIR');
+  const canTransferCase = hasPermission(role, 'TRANSFER_CASES');
+  const canModifyLegal = hasPermission(role, 'MODIFY_LEGAL_SECTIONS');
+  const canViewReports = hasPermission(role, 'VIEW_REPORTS');
+  const canUploadEvidence = hasPermission(role, 'UPLOAD_EVIDENCE');
+  const canRecordStatement = hasPermission(role, 'RECORD_STATEMENTS');
 
   // Canvas dimensions (right graph pane)
   const [cW, setCW] = useState(0);
@@ -802,61 +823,134 @@ export const CaseDetailScreen: React.FC<Props> = ({ navigation, route }) => {
               <View style={[styles.headerPriorityDot, { backgroundColor: pc }]} />
               <Text style={[styles.headerPriorityText, { color: pc }]}>{PRIORITY_LABELS[caseItem.priority]}</Text>
             </View>
-            <Pressable
-              onPress={() => navigation.navigate('ReportPreview', { caseId })}
-              style={styles.reportBtn}
-            >
-              <Text style={styles.reportBtnText}>Report ›</Text>
-            </Pressable>
+            {canViewReports && (
+              <Pressable
+                onPress={() => navigation.navigate('ReportPreview', { caseId })}
+                style={styles.reportBtn}
+              >
+                <Text style={styles.reportBtnText}>Report ›</Text>
+              </Pressable>
+            )}
           </View>
         </View>
 
-        {/* ── Body: two-column layout ──────────────────────────────────────── */}
-        <View style={styles.body}>
+          {/* ── Body: two-column layout ──────────────────────────────────────── */}
+          <View style={styles.body}>
 
-          {/* ── LEFT PANEL: Case Metadata + Description ──────────────────── */}
-          <ScrollView style={styles.leftPanel} showsVerticalScrollIndicator={false}>
+            {/* ── LEFT PANEL: Case Metadata + Description ──────────────────── */}
+            <ScrollView style={styles.leftPanel} showsVerticalScrollIndicator={false}>
 
-            {/* Case Metadata Card */}
-            <View style={styles.metaCard}>
-              <View style={styles.metaCardHeader}>
-                <View style={styles.metaCardHeaderIcon}>
-                  <Text style={{ fontSize: 16 }}>📋</Text>
+              {/* Case Metadata Card */}
+              <View style={styles.metaCard}>
+                <View style={styles.metaCardHeader}>
+                  <View style={styles.metaCardHeaderIcon}>
+                    <Text style={{ fontSize: 16 }}>📋</Text>
+                  </View>
+                  <Text style={styles.metaCardTitle}>Case Metadata</Text>
                 </View>
-                <Text style={styles.metaCardTitle}>Case Metadata</Text>
-              </View>
-              <View style={styles.metaDivider} />
+                <View style={styles.metaDivider} />
 
-              <View style={styles.metaRow}>
-                <Text style={styles.metaLabel}>FIR Number</Text>
-                <Text style={styles.metaValue}>{caseItem.firNumber}</Text>
-              </View>
-              <View style={styles.metaRow}>
-                <Text style={styles.metaLabel}>Filed</Text>
-                <Text style={styles.metaValue}>{caseItem.filedDate}</Text>
-              </View>
-              <View style={styles.metaRow}>
-                <Text style={styles.metaLabel}>Handled By</Text>
-                <Text style={styles.metaValue}>{caseItem.investigatingOfficer}</Text>
-              </View>
-              <View style={styles.metaRow}>
-                <Text style={styles.metaLabel}>Sector</Text>
-                <Text style={styles.metaValue}>{caseItem.sector}</Text>
-              </View>
-              <View style={styles.metaRow}>
-                <Text style={styles.metaLabel}>Category</Text>
-                <Text style={styles.metaValue}>{caseItem.category}</Text>
-              </View>
-              <View style={[styles.metaRow, { borderBottomWidth: 0 }]}>
-                <Text style={styles.metaLabel}>Status</Text>
-                <View style={[styles.statusBadge, { backgroundColor: statusColor + '18', borderColor: statusColor + '44' }]}>
-                  <View style={[styles.statusDot, { backgroundColor: statusColor }]} />
-                  <Text style={[styles.statusText, { color: statusColor }]}>
-                    {caseItem.status.toUpperCase()}
-                  </Text>
+                <View style={styles.metaRow}>
+                  <Text style={styles.metaLabel}>FIR Number</Text>
+                  <Text style={styles.metaValue}>{caseItem.firNumber}</Text>
+                </View>
+                <View style={styles.metaRow}>
+                  <Text style={styles.metaLabel}>Filed</Text>
+                  <Text style={styles.metaValue}>{caseItem.filedDate}</Text>
+                </View>
+                <View style={styles.metaRow}>
+                  <Text style={styles.metaLabel}>Handled By</Text>
+                  <Text style={styles.metaValue}>{caseItem.investigatingOfficer}</Text>
+                </View>
+                <View style={styles.metaRow}>
+                  <Text style={styles.metaLabel}>Sector</Text>
+                  <Text style={styles.metaValue}>{caseItem.sector}</Text>
+                </View>
+                <View style={styles.metaRow}>
+                  <Text style={styles.metaLabel}>Category</Text>
+                  <Text style={styles.metaValue}>{caseItem.category}</Text>
+                </View>
+                <View style={[styles.metaRow, { borderBottomWidth: 0 }]}>
+                  <Text style={styles.metaLabel}>Status</Text>
+                  <View style={[styles.statusBadge, { backgroundColor: statusColor + '18', borderColor: statusColor + '44' }]}>
+                    <View style={[styles.statusDot, { backgroundColor: statusColor }]} />
+                    <Text style={[styles.statusText, { color: statusColor }]}>
+                      {caseItem.status.toUpperCase()}
+                    </Text>
+                  </View>
                 </View>
               </View>
-            </View>
+
+              {/* RBAC Action Controls Card */}
+              <View style={styles.metaCard}>
+                <View style={styles.metaCardHeader}>
+                  <View style={[styles.metaCardHeaderIcon, { backgroundColor: Colors.paperDim }]}>
+                    <Text style={{ fontSize: 16 }}>🛡️</Text>
+                  </View>
+                  <Text style={styles.metaCardTitle}>Duty Role Actions ({officer?.rank || 'Officer'})</Text>
+                </View>
+                <View style={styles.metaDivider} />
+
+                <View style={{ gap: 8, paddingTop: 4 }}>
+                  {canUploadEvidence && (
+                    <Pressable
+                      style={({ pressed }) => [styles.actionPillBtn, pressed && { opacity: 0.8 }]}
+                      onPress={() => alert('Evidence Upload module launched. Select photo/video/audio file.')}
+                    >
+                      <Text style={styles.actionPillBtnText}>📷 Upload Photo / Video / Evidence</Text>
+                    </Pressable>
+                  )}
+
+                  {canRecordStatement && (
+                    <Pressable
+                      style={({ pressed }) => [styles.actionPillBtn, pressed && { opacity: 0.8 }]}
+                      onPress={() => alert('Statement Recorder module opened. Recording audio / witness transcript.')}
+                    >
+                      <Text style={styles.actionPillBtnText}>🎙️ Record Statement / Witness Transcript</Text>
+                    </Pressable>
+                  )}
+
+                  {canModifyLegal && (
+                    <Pressable
+                      style={({ pressed }) => [styles.actionPillBtn, pressed && { opacity: 0.8 }]}
+                      onPress={() => alert('Legal Section Editor opened. IPC / BNS Sections updated.')}
+                    >
+                      <Text style={styles.actionPillBtnText}>⚖️ Modify Legal Sections & Penalties</Text>
+                    </Pressable>
+                  )}
+
+                  {canGenerateFIR && (
+                    <Pressable
+                      style={({ pressed }) => [styles.actionPillBtn, { backgroundColor: Colors.inkNavy }, pressed && { opacity: 0.8 }]}
+                      onPress={() => alert(`Official FIR document generated for ${caseItem.firNumber}.`)}
+                    >
+                      <Text style={[styles.actionPillBtnText, { color: Colors.white }]}>📜 Generate Official FIR</Text>
+                    </Pressable>
+                  )}
+
+                  {canTransferCase && (
+                    <Pressable
+                      style={({ pressed }) => [styles.actionPillBtn, { backgroundColor: Colors.amber }, pressed && { opacity: 0.8 }]}
+                      onPress={() => navigation.navigate('CaseAssignment' as any)}
+                    >
+                      <Text style={[styles.actionPillBtnText, { color: Colors.white }]}>🔄 Transfer Case to Another PS</Text>
+                    </Pressable>
+                  )}
+
+                  {canDeleteCase && (
+                    <Pressable
+                      style={({ pressed }) => [styles.actionPillBtn, { backgroundColor: Colors.redDim, borderColor: Colors.red }, pressed && { opacity: 0.8 }]}
+                      onPress={() => {
+                        deleteCase(caseItem.id);
+                        alert(`Case ${caseItem.firNumber} has been deleted.`);
+                        navigation.goBack();
+                      }}
+                    >
+                      <Text style={[styles.actionPillBtnText, { color: Colors.red }]}>🗑️ Delete Case Record</Text>
+                    </Pressable>
+                  )}
+                </View>
+              </View>
 
             {/* Case Description Card */}
             <View style={styles.descCard}>
@@ -1625,6 +1719,20 @@ const styles = StyleSheet.create({
     color: Colors.inkNavy,
     fontWeight: '700',
     marginBottom: 4,
+  },
+  actionPillBtn: {
+    paddingHorizontal: 12,
+    paddingVertical: 9,
+    borderRadius: 7,
+    backgroundColor: Colors.paperDim,
+    borderWidth: 1,
+    borderColor: Colors.line,
+    justifyContent: 'center',
+  },
+  actionPillBtnText: {
+    fontFamily: FontFamily.bodySemiBold,
+    fontSize: FontSize.smPlus,
+    color: Colors.inkNavy,
   },
   synopsisBadgeText: {
     fontFamily: FontFamily.body,

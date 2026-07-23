@@ -19,16 +19,35 @@ import { Colors } from '../../constants/colors';
 import { FontFamily, FontSize } from '../../constants/typography';
 import { useAuthStore } from '../../store/authStore';
 
+import type { Role } from '../../types';
+import { MOCK_ROLE_ACCOUNTS } from '../../constants/mockData';
+
 type Props = {
   navigation: StackNavigationProp<AuthStackParamList, 'Login'>;
 };
 
+const ROLES_LIST: { role: Role; label: string; badge: string }[] = [
+  { role: 'commissioner', label: 'Commissioner', badge: 'KSP-COMM-001' },
+  { role: 'inspector', label: 'Inspector', badge: 'KSP-WF-4421' },
+  { role: 'sub_inspector', label: 'Sub Inspector', badge: 'KSP-SI-1024' },
+  { role: 'head_constable', label: 'Head Constable', badge: 'KSP-HC-3012' },
+  { role: 'constable', label: 'Constable', badge: 'KSP-CONST-5088' },
+];
+
 export const LoginScreen: React.FC<Props> = ({ navigation }) => {
   const insets = useSafeAreaInsets();
   const { login, isLoading, error, clearError } = useAuthStore();
-  const [badgeNumber, setBadgeNumber] = useState('');
-  const [pin, setPin] = useState('');
+  const [selectedRole, setSelectedRole] = useState<Role>('inspector');
+  const [badgeNumber, setBadgeNumber] = useState('KSP-WF-4421');
+  const [pin, setPin] = useState('1234');
   const [pinVisible, setPinVisible] = useState(false);
+
+  const selectRolePill = (item: typeof ROLES_LIST[0]) => {
+    setSelectedRole(item.role);
+    setBadgeNumber(item.badge);
+    setPin('1234');
+    clearError();
+  };
 
   const handleLogin = async () => {
     if (!badgeNumber.trim() || !pin.trim()) {
@@ -36,7 +55,7 @@ export const LoginScreen: React.FC<Props> = ({ navigation }) => {
       return;
     }
     clearError();
-    await login(badgeNumber.trim(), pin.trim());
+    await login(badgeNumber.trim(), pin.trim(), selectedRole);
   };
 
   return (
@@ -63,7 +82,28 @@ export const LoginScreen: React.FC<Props> = ({ navigation }) => {
         {/* Form */}
         <View style={styles.form}>
           <Text style={styles.formTitle}>Officer Sign In</Text>
-          <Text style={styles.formSub}>Enter your badge number and duty PIN to continue.</Text>
+          <Text style={styles.formSub}>Select your role or enter badge credentials to sign in.</Text>
+
+          {/* Role Pills Selector */}
+          <View style={styles.roleSelectorContainer}>
+            <Text style={styles.fieldLabel}>Select Duty Role (RBAC Demo):</Text>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.rolePillsRow}>
+              {ROLES_LIST.map((item) => {
+                const isActive = selectedRole === item.role;
+                return (
+                  <Pressable
+                    key={item.role}
+                    onPress={() => selectRolePill(item)}
+                    style={[styles.rolePill, isActive && styles.rolePillActive]}
+                  >
+                    <Text style={[styles.rolePillText, isActive && styles.rolePillTextActive]}>
+                      {item.label}
+                    </Text>
+                  </Pressable>
+                );
+              })}
+            </ScrollView>
+          </View>
 
           <View style={styles.field}>
             <Text style={styles.fieldLabel}>Badge Number</Text>
@@ -296,6 +336,34 @@ const styles = StyleSheet.create({
     fontSize: FontSize.base,
     color: Colors.gray,
     textDecorationLine: 'underline',
+  },
+  roleSelectorContainer: {
+    marginBottom: 16,
+  },
+  rolePillsRow: {
+    flexDirection: 'row',
+    gap: 6,
+    paddingVertical: 4,
+  },
+  rolePill: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 16,
+    backgroundColor: Colors.paperDim,
+    borderWidth: 1,
+    borderColor: Colors.line,
+  },
+  rolePillActive: {
+    backgroundColor: Colors.inkNavy,
+    borderColor: Colors.inkNavy,
+  },
+  rolePillText: {
+    fontFamily: FontFamily.bodyMedium,
+    fontSize: FontSize.smPlus,
+    color: Colors.gray,
+  },
+  rolePillTextActive: {
+    color: Colors.white,
   },
   footer: {
     fontFamily: FontFamily.mono,

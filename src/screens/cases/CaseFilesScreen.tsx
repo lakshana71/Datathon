@@ -29,8 +29,10 @@ export const CaseFilesScreen: React.FC<Props> = ({ navigation }) => {
 
   const {
     activeFilter,
+    searchQuery,
     setFilter,
     setSelectedCase,
+    setSearchQuery,
     getFilteredCases,
   } = useCaseStore();
 
@@ -90,6 +92,8 @@ export const CaseFilesScreen: React.FC<Props> = ({ navigation }) => {
     >
       <AppHeader
         onMenuPress={() => navigation.openDrawer()}
+        searchQuery={searchQuery}
+        onSearchChange={setSearchQuery}
       />
 
       <FlatList

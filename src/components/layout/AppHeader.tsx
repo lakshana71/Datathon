@@ -5,6 +5,7 @@ import { View, Text, StyleSheet, Pressable, TextInput, Platform } from 'react-na
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Colors } from '../../constants/colors';
 import { FontFamily, FontSize } from '../../constants/typography';
+import { useAuthStore } from '../../store/authStore';
 import { MOCK_OFFICER } from '../../constants/mockData';
 import { AvatarCircle } from '../officer/OfficerAvatar';
 
@@ -23,7 +24,8 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
   onSearchChange,
   showSearch = true,
 }) => {
-  const officer = MOCK_OFFICER;
+  const { officer: storeOfficer } = useAuthStore();
+  const officer = storeOfficer || MOCK_OFFICER;
 
   return (
     <View style={styles.container}>

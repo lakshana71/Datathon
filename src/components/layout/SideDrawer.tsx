@@ -25,13 +25,29 @@ interface NavItem {
   screen: string;
   icon: string;
   group?: string;
+  commissionerOnly?: boolean;
+  minRoleLevel?: number;
 }
 
-const NAV_ITEMS: NavItem[] = [
+const COMMISSIONER_NAV_ITEMS: NavItem[] = [
+  { id: 'admin-label', label: 'Commissioner Admin', screen: '', icon: '', group: 'label' },
+  { id: 'PoliceStations', label: 'Police Stations', screen: 'PoliceStations', icon: '🏛' },
+  { id: 'OfficerManagement', label: 'Officer Mgmt', screen: 'OfficerManagement', icon: '👥' },
+  { id: 'FIRManagement', label: 'FIR Management', screen: 'FIRManagement', icon: '📋' },
+  { id: 'DistrictAnalytics', label: 'District Analytics', screen: 'DistrictAnalytics', icon: '📊' },
+  { id: 'CrimeAnalytics', label: 'Crime Analytics', screen: 'CrimeAnalytics', icon: '📈' },
+  { id: 'Reports', label: 'Reports', screen: 'Reports', icon: '📄' },
+  { id: 'CaseAssignment', label: 'Assignments', screen: 'CaseAssignment', icon: '🔄' },
+  { id: 'PerformanceDashboard', label: 'Performance', screen: 'PerformanceDashboard', icon: '🎯' },
+];
+
+const STANDARD_NAV_ITEMS: NavItem[] = [
   { id: 'overview-label', label: 'Overview', screen: '', icon: '', group: 'label' },
   { id: 'ControlRoom', label: 'Control Room', screen: 'ControlRoom', icon: '⊞' },
   { id: 'investigation-label', label: 'Investigation', screen: '', icon: '', group: 'label' },
   { id: 'CaseFiles', label: 'Case Files', screen: 'CaseFiles', icon: '📁' },
+  { id: 'ComplaintLetters', label: 'Complaints', screen: 'ComplaintLetters', icon: '📬' },
+  { id: 'Documents', label: 'Documents', screen: 'Documents', icon: '🗂' },
   { id: 'PersonCrimeTracker', label: 'Crime Tracker', screen: 'PersonCrimeTracker', icon: '◎' },
   { id: 'DutyNotebook', label: 'Duty Notebook', screen: 'DutyNotebook', icon: '💬' },
   { id: 'fieldops-label', label: 'Field Ops', screen: '', icon: '', group: 'label' },
@@ -47,6 +63,11 @@ export const SideDrawer: React.FC<DrawerContentComponentProps> = (props) => {
   const insets = useSafeAreaInsets();
   const { officer, logout } = useAuthStore();
   const activeRouteName = state.routes[state.index]?.name ?? '';
+
+  const isComm = officer?.role === 'commissioner';
+  const navItems = isComm
+    ? [...COMMISSIONER_NAV_ITEMS, ...STANDARD_NAV_ITEMS]
+    : STANDARD_NAV_ITEMS;
 
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
@@ -73,7 +94,7 @@ export const SideDrawer: React.FC<DrawerContentComponentProps> = (props) => {
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{ paddingBottom: 20 }}
       >
-        {NAV_ITEMS.map((item) => {
+        {navItems.map((item) => {
           if (item.group === 'label') {
             return (
               <Text key={item.id} style={styles.groupLabel}>
@@ -106,8 +127,8 @@ export const SideDrawer: React.FC<DrawerContentComponentProps> = (props) => {
             <AvatarCircle initials={officer.initials} size={28} />
           )}
           <View style={{ flex: 1 }}>
-            <Text style={styles.footStation}>Whitefield Sub-Division</Text>
-            <Text style={styles.footForce}>Karnataka State Police</Text>
+            <Text style={styles.footStation} numberOfLines={1}>{officer?.name || 'Duty Officer'}</Text>
+            <Text style={styles.footForce} numberOfLines={1}>{officer?.rank || 'Karnataka State Police'}</Text>
           </View>
         </View>
         <Pressable onPress={logout} style={styles.logoutBtn}>

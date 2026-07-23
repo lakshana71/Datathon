@@ -12,6 +12,7 @@ interface CaseState {
   setFilter: (filter: string) => void;
   setSelectedCase: (id: string | null) => void;
   setSearchQuery: (query: string) => void;
+  deleteCase: (id: string) => void;
   getCaseById: (id: string) => Case | undefined;
   getFilteredCases: () => Case[];
 }
@@ -26,6 +27,7 @@ export const useCaseStore = create<CaseState>((set, get) => ({
   setFilter: (filter) => set({ activeFilter: filter }),
   setSelectedCase: (id) => set({ selectedCaseId: id }),
   setSearchQuery: (query) => set({ searchQuery: query }),
+  deleteCase: (id) => set((state) => ({ cases: state.cases.filter((c) => c.id !== id) })),
 
   getCaseById: (id) => get().cases.find((c) => c.id === id),
 

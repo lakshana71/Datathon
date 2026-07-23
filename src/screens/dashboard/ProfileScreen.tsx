@@ -6,7 +6,6 @@ import {
   StyleSheet,
   ScrollView,
   TouchableOpacity,
-  Image,
   Dimensions,
   Modal,
   Platform,
@@ -18,38 +17,39 @@ import type { DrawerParamList } from '../../types/navigation';
 import { Colors } from '../../constants/colors';
 import { FontFamily, FontSize } from '../../constants/typography';
 import { AppHeader } from '../../components/layout/AppHeader';
+import { useAuthStore } from '../../store/authStore';
+import { ROLE_LABELS } from '../../utils/rbac';
 
 export const ProfileScreen: React.FC = () => {
   const insets = useSafeAreaInsets();
   const navigation = useNavigation<DrawerNavigationProp<DrawerParamList>>();
+  const { officer } = useAuthStore();
 
   const [scheduleModalVisible, setScheduleModalVisible] = useState(false);
+  const [profileSearch, setProfileSearch] = useState('');
 
   const screenWidth = Dimensions.get('window').width;
   const isWide = Platform.OS === 'web' && screenWidth >= 992;
 
-  // Officer Static Data
+  // Derive display data from auth store — falls back gracefully if missing
   const officerData = {
-    name: 'Insp. R. Kumaraswamy',
-    initials: 'RK',
-    rank: 'Inspector of Police',
-    designation: 'Circle Inspector (CI)',
-    badgeNumber: 'KSP-WF-4421',
-    age: '42 Years',
-    policeStation: 'Whitefield Police Station',
-    jurisdiction: 'Whitefield PS Circle (Hoodi, ITPL, Varthur, Marathahalli)',
-    department: 'Law & Order & Crime Investigation',
-    yearsOfService: '14 Years',
-    phone: '+91-80-2845-0001',
-    email: 'r.kumaraswamy@ksp.gov.in',
-    shift: '08:00 - 20:00 (Day Shift)',
+    name: officer?.name ?? 'Unknown Officer',
+    initials: officer?.initials ?? 'O',
+    rank: officer?.rank ?? 'Police Officer',
+    designation: ROLE_LABELS[officer?.role ?? 'constable'],
+    badgeNumber: officer?.badgeNumber ?? '—',
+    policeStation: officer?.station ?? '—',
+    phone: officer?.phone ?? '—',
+    email: officer?.email ?? '—',
+    shift: officer?.shift ?? '—',
+    joiningDate: officer?.joiningDate ?? '—',
+    currentAssignment: officer?.currentAssignment ?? '—',
+    force: officer?.force ?? 'Karnataka State Police',
     status: 'Active (On Duty)',
-    reportingOfficer: 'ACP Swaminathan S. (Whitefield Sub-Division)',
-    specialization: 'Cyber Forensics & Homicide Investigation',
-    activeCases: 6,
-    resolvedCases: 18,
-    patrolAssignment: 'Command Coordination Liaison (PCR-14 & PCR-09)',
-    emergencyContact: 'Mrs. Asha Kumaraswamy (Spouse) — +91-98450-99999',
+    department: 'Law & Order & Crime Investigation',
+    activeCases: officer?.casesCount ?? 0,
+    resolvedCases: Math.floor((officer?.casesCount ?? 0) * 2.5),
+    performanceScore: officer?.performanceScore ?? 0,
     lastLogin: 'Just now via Secure Tactical VPN',
     awards: [
       { title: "President's Police Medal", year: '2024', desc: 'Meritorious Service excellence' },
@@ -71,10 +71,12 @@ export const ProfileScreen: React.FC = () => {
     <View style={[styles.screen, { paddingTop: insets.top }]}>
       <AppHeader
         onMenuPress={() => navigation.openDrawer()}
-        showSearch={false}
+        searchQuery={profileSearch}
+        onSearchChange={setProfileSearch}
+        showSearch={true}
       />
 
-      <ScrollView style={styles.scroll} contentContainerStyle={styles.contentContainer}>
+      <ScrollView style={styles.scroll} contentContainerStyle={[styles.contentContainer, { paddingBottom: insets.bottom + 32 }]}>
         {/* Main layout: responsive split or unified column */}
         <View style={[styles.profileLayout, isWide && styles.profileLayoutRow]}>
           
@@ -116,7 +118,7 @@ export const ProfileScreen: React.FC = () => {
                   <Text style={styles.compactVal}>{officerData.department}</Text>
                 </View>
                 <View style={styles.compactItem}>
-                  <Text style={styles.compactLabel}>SHIFT TIMING</Text>
+                  <Text style={styles.compactLabel}>SHIFT / LOGIN</Text>
                   <Text style={styles.compactVal}>{officerData.shift}</Text>
                 </View>
               </View>
@@ -186,16 +188,16 @@ export const ProfileScreen: React.FC = () => {
                   <Text style={styles.infoValue}>{officerData.designation}</Text>
                 </View>
                 <View style={styles.infoBox}>
-                  <Text style={styles.infoLabel}>Age</Text>
-                  <Text style={styles.infoValue}>{officerData.age}</Text>
+                  <Text style={styles.infoLabel}>Joining Date</Text>
+                  <Text style={styles.infoValue}>{officerData.joiningDate}</Text>
                 </View>
                 <View style={styles.infoBox}>
-                  <Text style={styles.infoLabel}>Years of Service</Text>
-                  <Text style={styles.infoValue}>{officerData.yearsOfService}</Text>
+                  <Text style={styles.infoLabel}>Current Assignment</Text>
+                  <Text style={styles.infoValue}>{officerData.currentAssignment}</Text>
                 </View>
                 <View style={styles.infoBox}>
-                  <Text style={styles.infoLabel}>Specialization</Text>
-                  <Text style={styles.infoValue}>{officerData.specialization}</Text>
+                  <Text style={styles.infoLabel}>Force</Text>
+                  <Text style={styles.infoValue}>{officerData.force}</Text>
                 </View>
                 <View style={styles.infoBox}>
                   <Text style={styles.infoLabel}>Official Contact</Text>
@@ -206,8 +208,8 @@ export const ProfileScreen: React.FC = () => {
                   <Text style={styles.infoValue}>{officerData.email}</Text>
                 </View>
                 <View style={styles.infoBox}>
-                  <Text style={styles.infoLabel}>Reporting Officer</Text>
-                  <Text style={styles.infoValue}>{officerData.reportingOfficer}</Text>
+                  <Text style={styles.infoLabel}>Active Cases</Text>
+                  <Text style={styles.infoValue}>{officerData.activeCases}</Text>
                 </View>
                 <View style={styles.infoBox}>
                   <Text style={styles.infoLabel}>Last Secure Login</Text>
@@ -217,18 +219,13 @@ export const ProfileScreen: React.FC = () => {
 
               <View style={styles.subDivider} />
 
-              <Text style={styles.detailsSubheading}>📍 Jurisdiction & Beat</Text>
-              <Text style={styles.detailsText}>{officerData.jurisdiction}</Text>
+              <Text style={styles.detailsSubheading}>📍 Police Station / Unit</Text>
+              <Text style={styles.detailsText}>{officerData.policeStation}</Text>
 
               <View style={styles.subDivider} />
 
-              <Text style={styles.detailsSubheading}>🚔 Current Patrol Assignment</Text>
-              <Text style={styles.detailsText}>{officerData.patrolAssignment}</Text>
-
-              <View style={styles.subDivider} />
-
-              <Text style={styles.detailsSubheading}>🚨 Emergency Contact</Text>
-              <Text style={styles.detailsText}>{officerData.emergencyContact}</Text>
+              <Text style={styles.detailsSubheading}>🚔 Current Assignment</Text>
+              <Text style={styles.detailsText}>{officerData.currentAssignment}</Text>
             </View>
 
             {/* Awards & Certifications Card */}
@@ -269,7 +266,7 @@ export const ProfileScreen: React.FC = () => {
         <View style={styles.modalOverlay}>
           <View style={styles.modalContainer}>
             <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>🗓️ INSPEC. KUMARASWAMY - DUTY SCHEDULE</Text>
+              <Text style={styles.modalTitle}>🗓️ {officerData.name.toUpperCase()} - DUTY SCHEDULE</Text>
               <TouchableOpacity onPress={() => setScheduleModalVisible(false)}>
                 <Text style={styles.modalClose}>✕</Text>
               </TouchableOpacity>

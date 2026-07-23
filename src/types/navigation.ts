@@ -25,6 +25,18 @@ export type DrawerParamList = {
   Settings: undefined;
   Search: { query?: string };
   ReportPreview: { caseId: string };
+  // Shared Modules (all roles with permission)
+  Documents: undefined;
+  ComplaintLetters: undefined;
+  // Commissioner Only Modules
+  PoliceStations: undefined;
+  OfficerManagement: undefined;
+  DistrictAnalytics: undefined;
+  CrimeAnalytics: undefined;
+  Reports: undefined;
+  CaseAssignment: undefined;
+  PerformanceDashboard: undefined;
+  FIRManagement: undefined;
 };
 
 export type CaseStackParamList = {

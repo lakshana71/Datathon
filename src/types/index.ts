@@ -9,11 +9,20 @@ export type AlertType = 'pattern' | 'patrol' | 'trend' | 'link' | 'system';
 export type EvidenceType = 'document' | 'photo' | 'cctv' | 'sketch' | 'screenshot' | 'audio';
 export type NodeType = 'suspect' | 'alias' | 'phone' | 'address' | 'fir' | 'vehicle' | 'associate';
 
+// ─── Roles & RBAC ──────────────────────────────────────────────────────────────
+export type Role =
+  | 'commissioner'
+  | 'inspector'
+  | 'sub_inspector'
+  | 'head_constable'
+  | 'constable';
+
 // ─── Officer ──────────────────────────────────────────────────────────────────
 export interface Officer {
   id: string;
   name: string;
   initials: string;
+  role: Role;
   rank: string;
   station: string;
   force: string;
@@ -24,6 +33,38 @@ export interface Officer {
   joiningDate: string;
   currentAssignment: string;
   photoUrl: string | null;
+  casesCount?: number;
+  performanceScore?: number;
+}
+
+// ─── Police Station (Commissioner) ─────────────────────────────────────────────
+export interface PoliceStation {
+  id: string;
+  name: string;
+  code: string;
+  stationHouseOfficer: string;
+  address: string;
+  phone: string;
+  inspectorsCount: number;
+  sisCount: number;
+  headConstablesCount: number;
+  constablesCount: number;
+  activeCasesCount: number;
+  pendingCasesCount: number;
+  closedCasesCount: number;
+  highPriorityCasesCount: number;
+  status: 'operational' | 'busy' | 'alert';
+}
+
+// ─── Performance Metric (Commissioner) ─────────────────────────────────────────
+export interface StationPerformance {
+  stationId: string;
+  stationName: string;
+  resolutionRate: number; // percentage
+  avgDisposalDays: number;
+  pendingFirSlaBreach: number;
+  evidenceCollectionRate: number;
+  score: number; // out of 100
 }
 
 // ─── Stat Card ────────────────────────────────────────────────────────────────

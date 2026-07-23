@@ -7,6 +7,7 @@ import { createStackNavigator } from '@react-navigation/stack';
 import { createDrawerNavigator } from '@react-navigation/drawer';
 
 import { useAuthStore } from '../store/authStore';
+import { Colors } from '../constants/colors';
 
 // Screens
 import { LoginScreen } from '../screens/auth/LoginScreen';
@@ -21,6 +22,20 @@ import { CrimeMapScreen } from '../screens/dashboard/CrimeMapScreen';
 import { AlertsScreen } from '../screens/dashboard/AlertsScreen';
 import { ProfileScreen } from '../screens/dashboard/ProfileScreen';
 import { SettingsScreen } from '../screens/dashboard/SettingsScreen';
+
+// Commissioner Screens
+import { PoliceStationsScreen } from '../screens/commissioner/PoliceStationsScreen';
+import { OfficerManagementScreen } from '../screens/commissioner/OfficerManagementScreen';
+import { DistrictAnalyticsScreen } from '../screens/commissioner/DistrictAnalyticsScreen';
+import { CrimeAnalyticsScreen } from '../screens/commissioner/CrimeAnalyticsScreen';
+import { ReportsScreen } from '../screens/commissioner/ReportsScreen';
+import { CaseAssignmentScreen } from '../screens/commissioner/CaseAssignmentScreen';
+import { PerformanceDashboardScreen } from '../screens/commissioner/PerformanceDashboardScreen';
+import { FIRManagementScreen } from '../screens/commissioner/FIRManagementScreen';
+
+// Shared Module Screens
+import { DocumentsScreen } from '../screens/cases/DocumentsScreen';
+import { ComplaintLettersScreen } from '../screens/cases/ComplaintLettersScreen';
 
 // Drawer
 import { SideDrawer } from '../components/layout/SideDrawer';
@@ -66,13 +81,9 @@ function DrawerNavigator() {
       drawerContent={(props) => <SideDrawer {...props} />}
       screenOptions={{
         headerShown: false,
-
         drawerType: Platform.OS === 'web' ? 'permanent' : 'front',
-
         swipeEnabled: Platform.OS !== 'web',
-
         overlayColor: 'transparent',
-
         drawerStyle: {
           width: 230,
         },
@@ -81,6 +92,56 @@ function DrawerNavigator() {
       <Drawer.Screen
         name="ControlRoom"
         component={ControlRoomScreen}
+      />
+
+      <Drawer.Screen
+        name="PoliceStations"
+        component={PoliceStationsScreen}
+      />
+
+      <Drawer.Screen
+        name="OfficerManagement"
+        component={OfficerManagementScreen}
+      />
+
+      <Drawer.Screen
+        name="DistrictAnalytics"
+        component={DistrictAnalyticsScreen}
+      />
+
+      <Drawer.Screen
+        name="CrimeAnalytics"
+        component={CrimeAnalyticsScreen}
+      />
+
+      <Drawer.Screen
+        name="Reports"
+        component={ReportsScreen}
+      />
+
+      <Drawer.Screen
+        name="CaseAssignment"
+        component={CaseAssignmentScreen}
+      />
+
+      <Drawer.Screen
+        name="PerformanceDashboard"
+        component={PerformanceDashboardScreen}
+      />
+
+      <Drawer.Screen
+        name="FIRManagement"
+        component={FIRManagementScreen}
+      />
+
+      <Drawer.Screen
+        name="Documents"
+        component={DocumentsScreen}
+      />
+
+      <Drawer.Screen
+        name="ComplaintLetters"
+        component={ComplaintLettersScreen}
       />
 
       <Drawer.Screen
