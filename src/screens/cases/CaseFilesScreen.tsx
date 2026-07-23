@@ -1,5 +1,3 @@
-// CrimeSphere AI — CaseFilesScreen
-
 import React, { useState } from 'react';
 import {
   View,
@@ -18,7 +16,6 @@ import { FilterChip } from '../../components/ui/FilterChip';
 import { AppHeader } from '../../components/layout/AppHeader';
 import { EmptyState } from '../../components/ui/EmptyState';
 import { useCaseStore } from '../../store/caseStore';
-import { MOCK_CASE_FILTERS } from '../../constants/mockData';
 
 type Props = {
   navigation: DrawerNavigationProp<DrawerParamList, 'CaseFiles'>;
@@ -28,6 +25,7 @@ export const CaseFilesScreen: React.FC<Props> = ({ navigation }) => {
   const insets = useSafeAreaInsets();
 
   const {
+    cases,          // ← live list, updates when FIRs are added
     activeFilter,
     searchQuery,
     setFilter,
@@ -39,6 +37,15 @@ export const CaseFilesScreen: React.FC<Props> = ({ navigation }) => {
   const [refreshing, setRefreshing] = useState(false);
 
   const filteredCases = getFilteredCases();
+
+  // ── Dynamic filter counts derived from the live cases array ───────────────
+  const FILTERS = [
+    { id: 'all',        label: `All (${cases.length})`,                                        value: 'all' },
+    { id: 'urgent',     label: `High priority (${cases.filter(c => c.priority === 'urgent').length})`, value: 'urgent' },
+    { id: 'cyber',      label: `Cyber (${cases.filter(c => c.category === 'cyber').length})`,          value: 'cyber' },
+    { id: 'property',   label: `Property crime (${cases.filter(c => c.category === 'property').length})`, value: 'property' },
+    { id: 'unassigned', label: `Unassigned (${cases.filter(c => !c.investigatingOfficer).length})`,    value: 'unassigned' },
+  ];
 
   const onRefresh = async () => {
     setRefreshing(true);
@@ -67,9 +74,9 @@ export const CaseFilesScreen: React.FC<Props> = ({ navigation }) => {
         </Text>
       </View>
 
-      {/* Filter Chips */}
+      {/* Filter Chips — counts are live */}
       <View style={styles.filterRow}>
-        {MOCK_CASE_FILTERS.map((filter) => (
+        {FILTERS.map((filter) => (
           <FilterChip
             key={filter.id}
             label={filter.label}

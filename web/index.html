@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta httpEquiv="X-UA-Compatible" content="IE=edge" />
+
+    <!--
+      CrimeSphere AI — Viewport Configuration
+      =========================================
+      width=1800: Sets the "virtual" viewport width to 1800px.
+      On a 1536px-wide monitor this produces a natural ~85% visual scale,
+      keeping the full sidebar + content area comfortably visible.
+      The scrolling fix in App.tsx ensures all screens scroll correctly
+      at any zoom level.
+    -->
+    <meta name="viewport" content="width=1800, initial-scale=1, shrink-to-fit=no" />
+
+    <title>CrimeSphere AI — Crime Intelligence Platform</title>
+
+    <!-- react-native-web recommended style reset -->
+    <style id="expo-reset">
+      html,
+      body {
+        height: 100%;
+      }
+      body {
+        overflow: hidden;
+      }
+      #root {
+        display: flex;
+        height: 100%;
+        flex: 1;
+      }
+      /* Fix react-native-screens ScreenContainer (plain View, no height on web).
+         Forces height to propagate down the flex chain so ScrollViews scroll. */
+      #root > div,
+      #root > div > div,
+      #root > div > div > div {
+        flex: 1;
+        min-height: 0;
+      }
+    </style>
+  </head>
+
+  <body>
+    <noscript>You need to enable JavaScript to run this app.</noscript>
+    <div id="root"></div>
+  </body>
+</html>

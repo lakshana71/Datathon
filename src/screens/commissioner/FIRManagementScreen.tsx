@@ -5,6 +5,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Colors } from '../../constants/colors';
 import { FontFamily, FontSize } from '../../constants/typography';
 import { AppHeader } from '../../components/layout/AppHeader';
+import { ScreenScrollView } from '../../components/layout/ScreenScrollView';
 import { MOCK_CASES } from '../../constants/mockData';
 import type { DrawerNavigationProp } from '@react-navigation/drawer';
 import type { DrawerParamList } from '../../types/navigation';
@@ -48,17 +49,18 @@ export const FIRManagementScreen: React.FC<Props> = ({ navigation }) => {
   });
 
   return (
-    <View style={styles.flex}>
-      <AppHeader
-        onMenuPress={() => navigation.openDrawer()}
-        searchQuery={search}
-        onSearchChange={setSearch}
-      />
-      <ScrollView
-        style={styles.bg}
-        contentContainerStyle={[styles.container, { paddingBottom: insets.bottom + 48, flexGrow: 1 }]}
-        showsVerticalScrollIndicator={true}
-      >
+        <ScreenScrollView
+      backgroundColor={Colors.paper}
+      header={
+        <AppHeader
+          onMenuPress={() => navigation.openDrawer()}
+          searchQuery={search}
+          onSearchChange={setSearch}
+        />
+      }
+      contentContainerStyle={[styles.container, { paddingBottom: insets.bottom + 48 }]}
+      showsVerticalScrollIndicator={true}
+    >
         <View style={styles.headerRow}>
           <View>
             <Text style={styles.title}>FIR Management</Text>
@@ -155,14 +157,13 @@ export const FIRManagementScreen: React.FC<Props> = ({ navigation }) => {
             ))
           )}
         </View>
-      </ScrollView>
-    </View>
+      </ScreenScrollView>
   );
 };
 
 const styles = StyleSheet.create({
-  flex: { flex: 1, minHeight: 0 },
-  bg: { flex: 1, minHeight: 0, backgroundColor: Colors.paper },
+  flex: { flex: 1, height: '100%', overflow: 'hidden' },
+  bg: { flex: 1, height: '100%', backgroundColor: Colors.paper, overflow: 'hidden' },
   container: { padding: 20, gap: 16 },
   headerRow: {
     flexDirection: 'row',

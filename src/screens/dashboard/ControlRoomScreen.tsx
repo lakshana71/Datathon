@@ -5,9 +5,10 @@
 //   Row 3: 4 Stat cards inline
 import React, { useState, useRef, useEffect } from 'react';
 import {
-  View, Text, ScrollView, StyleSheet, Pressable,
-  Image, Animated, RefreshControl, LayoutChangeEvent, Dimensions,
+  View, Text, StyleSheet, Pressable,
+  Image, Animated, RefreshControl,
 } from 'react-native';
+import { ScreenScrollView } from '../../components/layout/ScreenScrollView';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Colors } from '../../constants/colors';
 import { FontFamily, FontSize } from '../../constants/typography';
@@ -318,7 +319,8 @@ export const ControlRoomScreen: React.FC<Props> = ({ navigation }) => {
   useEffect(() => {
     Animated.parallel([
       Animated.timing(headerFade, { toValue: 1, duration: 500, useNativeDriver: true }),
-      Animated.spring(contentSlide, { toValue: 0, friction: 8, tension: 70, useNativeDriver: true }),
+      // useNativeDriver: false so RN Web layout can measure scroll height correctly
+      Animated.spring(contentSlide, { toValue: 0, friction: 8, tension: 70, useNativeDriver: false }),
     ]).start();
   }, []);
 
@@ -331,20 +333,20 @@ export const ControlRoomScreen: React.FC<Props> = ({ navigation }) => {
   const isWide = bodyW >= 700;
 
   return (
-    <View style={[styles.screen, { paddingTop: insets.top }]}>
-      <AppHeader
-        onMenuPress={() => navigation.openDrawer()}
-        searchQuery={feedSearch}
-        onSearchChange={setFeedSearch}
-      />
-
-      <ScrollView
-        style={styles.scroll}
-        contentContainerStyle={[styles.content, { paddingBottom: insets.bottom + 48, flexGrow: 1 }]}
-        showsVerticalScrollIndicator={true}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={Colors.red} />}
-        onLayout={(e: LayoutChangeEvent) => setBodyW(e.nativeEvent.layout.width)}
-      >
+    <ScreenScrollView
+      backgroundColor={Colors.paper}
+      header={
+        <AppHeader
+          onMenuPress={() => navigation.openDrawer()}
+          searchQuery={feedSearch}
+          onSearchChange={setFeedSearch}
+        />
+      }
+      contentContainerStyle={[styles.content, { paddingBottom: insets.bottom + 48 }]}
+      showsVerticalScrollIndicator={true}
+      refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={Colors.red} />}
+      onLayout={(e: any) => setBodyW(e.nativeEvent.layout.width)}
+    >
         {/* ── Page head ─────────────────────────────────────────────── */}
         <Animated.View
           style={[
@@ -425,7 +427,7 @@ export const ControlRoomScreen: React.FC<Props> = ({ navigation }) => {
                 </Text>
 
                 <Pressable
-                  onPress={() => navigation.navigate('CaseFiles')}
+                  onPress={() => navigation.navigate('FileFIR')}
                   style={({ pressed }) => [styles.fileBtn, pressed && styles.fileBtnPressed]}
                   accessibilityLabel={canGenerateFIR ? 'Start new FIR' : 'Field Operations'}
                 >
@@ -435,7 +437,7 @@ export const ControlRoomScreen: React.FC<Props> = ({ navigation }) => {
                 </Pressable>
 
                 <View style={styles.fileQuickRow}>
-                  <Pressable style={styles.fileQuickBtn} onPress={() => navigation.navigate('CaseFiles')}>
+                  <Pressable style={styles.fileQuickBtn} onPress={() => navigation.navigate('ComplaintLetters')}>
                     <Text style={styles.fileQuickText}>📋 Complaint list</Text>
                   </Pressable>
                   <Pressable style={styles.fileQuickBtn} onPress={() => navigation.navigate('DutyNotebook')}>
@@ -478,22 +480,12 @@ export const ControlRoomScreen: React.FC<Props> = ({ navigation }) => {
         </Animated.View>
 
         <View style={{ height: 32 }} />
-      </ScrollView>
-    </View>
+    </ScreenScrollView>
   );
 };
 
 // ── Styles ────────────────────────────────────────────────────────────────────
 const styles = StyleSheet.create({
-  screen: {
-    flex: 1,
-    minHeight: 0,
-    backgroundColor: Colors.paper,
-  },
-  scroll: {
-    flex: 1,
-    minHeight: 0,
-  },
   content: {
     padding: 18,
     gap: 16,

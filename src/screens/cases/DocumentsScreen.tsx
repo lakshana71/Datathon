@@ -50,7 +50,7 @@ export const DocumentsScreen: React.FC<Props> = ({ navigation }) => {
       />
       <ScrollView
         style={styles.bg}
-        contentContainerStyle={[styles.container, { paddingBottom: insets.bottom + 48, flexGrow: 1 }]}
+        contentContainerStyle={[styles.container, { paddingBottom: insets.bottom + 48 }]}
         showsVerticalScrollIndicator={true}
       >
         <View style={styles.headerRow}>
@@ -100,8 +100,8 @@ export const DocumentsScreen: React.FC<Props> = ({ navigation }) => {
 };
 
 const styles = StyleSheet.create({
-  flex: { flex: 1, minHeight: 0 },
-  bg: { flex: 1, minHeight: 0, backgroundColor: Colors.paper },
+  flex: { flex: 1 },
+  bg: { flex: 1, backgroundColor: Colors.paper },
   container: { padding: 20, gap: 16 },
   headerRow: {
     flexDirection: 'row',

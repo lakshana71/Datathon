@@ -5,6 +5,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Colors } from '../../constants/colors';
 import { FontFamily, FontSize } from '../../constants/typography';
 import { AppHeader } from '../../components/layout/AppHeader';
+import { ScreenScrollView } from '../../components/layout/ScreenScrollView';
 import type { DrawerNavigationProp } from '@react-navigation/drawer';
 import type { DrawerParamList } from '../../types/navigation';
 
@@ -17,17 +18,18 @@ export const CrimeAnalyticsScreen: React.FC<Props> = ({ navigation }) => {
   const [search, setSearch] = useState('');
 
   return (
-    <View style={styles.flex}>
-      <AppHeader
-        onMenuPress={() => navigation.openDrawer()}
-        searchQuery={search}
-        onSearchChange={setSearch}
-      />
-      <ScrollView
-        style={styles.bg}
-        contentContainerStyle={[styles.container, { paddingBottom: insets.bottom + 48, flexGrow: 1 }]}
-        showsVerticalScrollIndicator={true}
-      >
+        <ScreenScrollView
+      backgroundColor={Colors.paper}
+      header={
+        <AppHeader
+          onMenuPress={() => navigation.openDrawer()}
+          searchQuery={search}
+          onSearchChange={setSearch}
+        />
+      }
+      contentContainerStyle={[styles.container, { paddingBottom: insets.bottom + 48 }]}
+      showsVerticalScrollIndicator={true}
+    >
         <View style={styles.headerRow}>
           <Text style={styles.title}>Crime Pattern & Intelligence Analytics</Text>
           <Text style={styles.subtitle}>Modus Operandi Clustering, Recidivism Risk & Hotspot Forecasts</Text>
@@ -109,14 +111,13 @@ export const CrimeAnalyticsScreen: React.FC<Props> = ({ navigation }) => {
             <Text style={styles.matrixVal}>4 Cases · Sector 4 & Marathahalli</Text>
           </View>
         </View>
-      </ScrollView>
-    </View>
+      </ScreenScrollView>
   );
 };
 
 const styles = StyleSheet.create({
-  flex: { flex: 1, minHeight: 0 },
-  bg: { flex: 1, minHeight: 0, backgroundColor: Colors.paper },
+  flex: { flex: 1, height: '100%', overflow: 'hidden' },
+  bg: { flex: 1, height: '100%', backgroundColor: Colors.paper, overflow: 'hidden' },
   container: { padding: 20, gap: 16 },
   headerRow: { marginBottom: 4 },
   title: {

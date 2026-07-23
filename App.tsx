@@ -26,6 +26,8 @@ import {
 import { AppNavigator } from './src/navigation/AppNavigator';
 import { LoadingSpinner } from './src/components/ui/LoadingSpinner';
 
+
+
 export default function App() {
   const [fontsLoaded] = useFonts({
     Spectral_500Medium,
@@ -50,4 +52,4 @@ export default function App() {
       </SafeAreaProvider>
     </GestureHandlerRootView>
   );
-}
+}

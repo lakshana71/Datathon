@@ -37,6 +37,8 @@ export type DrawerParamList = {
   CaseAssignment: undefined;
   PerformanceDashboard: undefined;
   FIRManagement: undefined;
+  // FIR Filing
+  FileFIR: undefined;
 };
 
 export type CaseStackParamList = {

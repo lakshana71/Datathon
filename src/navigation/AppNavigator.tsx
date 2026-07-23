@@ -37,6 +37,9 @@ import { FIRManagementScreen } from '../screens/commissioner/FIRManagementScreen
 import { DocumentsScreen } from '../screens/cases/DocumentsScreen';
 import { ComplaintLettersScreen } from '../screens/cases/ComplaintLettersScreen';
 
+// FIR Filing
+import { FileFIRScreen } from '../screens/fir/FileFIRScreen';
+
 // Drawer
 import { SideDrawer } from '../components/layout/SideDrawer';
 
@@ -177,6 +180,11 @@ function DrawerNavigator() {
       <Drawer.Screen
         name="Settings"
         component={SettingsScreen}
+      />
+
+      <Drawer.Screen
+        name="FileFIR"
+        component={FileFIRScreen}
       />
     </Drawer.Navigator>
   );
